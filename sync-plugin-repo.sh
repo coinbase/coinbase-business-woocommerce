@@ -17,6 +17,7 @@ echo "Updating Plugin Repo..."
 
 cp -R -v ./assets "$plugin_dir"
 cp -R -v ./includes "$plugin_dir"
+cp -R -v ./vendor "$plugin_dir"
 cp -v ./class-wc-gateway-coinbase.php "$plugin_dir"
 cp -v ./coinbase-commerce.php "$plugin_dir"
 cp -v ./readme.txt "$plugin_dir"

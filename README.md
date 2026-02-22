@@ -1,8 +1,8 @@
-# Coinbase Commerce for WooCommerce
+# Coinbase Business for WooCommerce
 
-**Note: This repository is not actively maintained.**
+A WooCommerce payment gateway that allows your customers to pay with USDC on Base network via Coinbase Business Payment Links API.
 
-A WooCommerce payment gateway that allows your customers to pay with cryptocurrency via Coinbase Commerce
+**Note: This plugin requires your WooCommerce store currency to be set to USD.**
 
 ## Installation
 
@@ -12,15 +12,15 @@ This plugin is available on the [WordPress.org plugin repository], and can be in
 
 #### Within your WordPress dashboard
 
-1. Visit ‘Plugins > Add New’
-2. Search for ‘Coinbase Commerce’
-3. Activate Coinbase Commerce from your Plugins page.
+1. Visit 'Plugins > Add New'
+2. Search for 'Coinbase Commerce'
+3. Activate Coinbase Business from your Plugins page.
 
 #### From WordPress.org plugin repository
 
-1. Download Coinbase Commerce from <https://wordpress.org/plugins/coinbase-commerce/>
-2. Upload to your ‘/wp-content/plugins/’ directory, using your favorite method (ftp, sftp, scp, etc…)
-3. Activate Coinbase Commerce from your Plugins page.
+1. Download Coinbase Business from <https://wordpress.org/plugins/coinbase-commerce/>
+2. Upload to your '/wp-content/plugins/' directory, using your favorite method (ftp, sftp, scp, etc...)
+3. Activate Coinbase Business from your Plugins page.
 
 ### From this repository
 
@@ -32,21 +32,21 @@ Alternatively, you can move the zip file into the `wp-content/plugins` folder of
 
 You will then need to go to your WordPress administration Plugins page, and activate the plugin.
 
-## Configuring Coinbase Commerce
+## Configuring Coinbase Business
 
-You will need to set up an account on [Coinbase Commerce].
+You will need to set up an account on [Coinbase Business].
 
 Within the WordPress administration area, go to the WooCommerce > Settings > Payments page and you will see Coinbase in the table of payment gateways.
 
 Clicking the Manage button on the right hand side will take you into the settings page, where you can configure the plugin for your store.
 
-**Note: If you are running version of WooCommerce older than 3.4.x your Coinbase Commerce tab will be underneath the WooCommerce > Settings > Checkout tab**
+**Note: If you are running version of WooCommerce older than 3.4.x your Coinbase tab will be underneath the WooCommerce > Settings > Checkout tab**
 
 ## Settings
 
 ### Enable / Disable
 
-Turn the Coinbase Commerce payment method on / off for visitors at checkout.
+Turn the Coinbase Business payment method on / off for visitors at checkout.
 
 ### Title
 
@@ -56,22 +56,24 @@ Title of the payment method on the checkout page
 
 Description of the payment method on the checkout page
 
-### API Key
+### CDP API Key Name
 
-Your Coinbase Commerce API key. Available within the [Coinbase Commerce settings page].
+Your CDP API key name from the [Coinbase Business dashboard].
 
-Using an API key allows your website to periodically check Coinbase Commerce for payment confirmation.
+### CDP API Private Key
 
-### Webhook Shared Secret
+Your EC private key in PEM format. Paste the full key including BEGIN/END lines.
 
-Your webhook shared secret. Available within the [Coinbase Commerce settings page].
+### Webhook Secret
 
-Using webhooks allows Coinbase Commerce to send payment confirmation messages to the website. To fill this out:
+Your webhook secret from the [Coinbase Business dashboard].
 
-1. In your Coinbase Commerce settings page, scroll to the 'Webhook subscriptions' section
-2. Click 'Add an endpoint' and paste the URL from within your settings page.
-3. Make sure to select "Send me all events", to receive all payment updates.
-4. Click "Show shared secret" and paste into the box within your settings page.
+Using webhooks allows Coinbase Business to send payment confirmation messages to the website. To fill this out:
+
+1. In your Coinbase Business dashboard, go to the webhook settings section
+2. Add a webhook endpoint with the URL from within your settings page.
+3. Select all payment link events (success, failed, expired).
+4. Copy the webhook secret and paste into the box within your settings page.
 
 ### Debug log
 
@@ -85,22 +87,34 @@ To use this plugin with your WooCommerce store you will need:
 
 - [WordPress] (tested up to 6.5.3)
 - [WooCommerce] (tested up to 8.9.1)
+- PHP 8.1 or higher
+- Store currency set to USD
 
 ## Frequently Asked Questions
 
-**What cryptocurrencies does the plugin support?**
+**What payment method does this plugin support?**
 
-The plugin supports all cryptocurrencies available at [Coinbase Commerce]
+This plugin supports USDC payments on the Base network via Coinbase Business Payment Links.
 
-**Does Coinbase Commerce have integrations with other commerce platforms?**
+**What currency must my store use?**
 
-Yes, the list of all integrations can be found here: [Coinbase Commerce Integrations](https://commerce.coinbase.com/integrate).
+Your WooCommerce store currency must be set to USD.
 
 ## License
 
 This project is licensed under the Apache 2.0 License
 
 ## Changelog
+
+## 2.0.0
+
+- Migrated from Coinbase Commerce Charge API to Coinbase Business Payment Links API
+- Authentication changed from API key to ES256 JWT (CDP API credentials)
+- Payment method changed to USDC on Base network only
+- Store currency must be USD
+- Updated webhook signature verification (x-hook0-signature with timestamp-based HMAC)
+- Reduced order timeout from 3 days to 1 day
+- Rebranded to Coinbase Business throughout
 
 ## 1.4.1
 
@@ -151,8 +165,8 @@ This project is licensed under the Apache 2.0 License
 - Coinbase Commerce
 
 [//]: # "Comments for storing reference material in. Stripped out when processing the markdown"
-[Coinbase Commerce]: https://commerce.coinbase.com/
-[Coinbase Commerce settings page]: https://commerce.coinbase.com/dashboard/settings/
+[Coinbase Business]: https://business.coinbase.com/
+[Coinbase Business dashboard]: https://business.coinbase.com/
 [WooCommerce]: https://woocommerce.com/
 [WordPress]: https://wordpress.org/
 [WordPress.org plugin repository]: https://wordpress.org/plugins/coinbase-commerce/

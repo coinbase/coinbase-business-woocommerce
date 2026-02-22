@@ -62,46 +62,21 @@ class WC_Coinbase_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test multiple gateway icons.
+	 * Test USDC icon is displayed.
 	 */
-	public function test_multiple_icons() {
+	public function test_usdc_icon() {
 		$payment_gateway = WC()->payment_gateways->payment_gateways()['coinbase'];
 
-		// Test 2 icons are loaded for bitcoin and litecoin.
-		update_option( 'coinbase_payment_methods', array( 'bitcoin', 'litecoin' ) );
-		$icons   = $payment_gateway->get_icon();
-		$matches = array();
-		$num     = preg_match_all( '/<img .*? src="(.*?)".*?\/>/', $icons, $matches );
-
-		$this->assertSame( 2, $num );
-		$this->assertStringEndsWith( 'bitcoin.png', $matches[1][0] );
-		$this->assertStringEndsWith( 'litecoin.png', $matches[1][1] );
-
-		// Cleanup
-		delete_option( 'coinbase_payment_methods' );
-	}
-
-	/**
-	 * Test unrecognised methods are ignored.
-	 */
-	public function test_ignore_icons() {
-		$payment_gateway = WC()->payment_gateways->payment_gateways()['coinbase'];
-
-		// Test 1 icon is loaded for bitcoin and notacoin is ignored.
-		update_option( 'coinbase_payment_methods', array( 'bitcoin', 'notacoin' ) );
 		$icons   = $payment_gateway->get_icon();
 		$matches = array();
 		$num     = preg_match_all( '/<img .*? src="(.*?)".*?\/>/', $icons, $matches );
 
 		$this->assertSame( 1, $num );
-		$this->assertStringEndsWith( 'bitcoin.png', $matches[1][0] );
-
-		// Cleanup
-		delete_option( 'coinbase_payment_methods' );
+		$this->assertStringEndsWith( 'usdc.png', $matches[1][0] );
 	}
 
 	/**
-	 * Test an order checkout
+	 * Test an order checkout.
 	 */
 	public function test_order_checkout() {
 		// User set up.
@@ -123,27 +98,95 @@ class WC_Coinbase_Test extends WP_UnitTestCase {
 		$this->order->calculate_shipping();
 		$this->order->calculate_totals();
 
-		add_filter( 'pre_http_request', array( $this, 'pre_http_request_charge_success' ) );
+		// Set store currency to USD for the test.
+		update_option( 'woocommerce_currency', 'USD' );
+
+		add_filter( 'pre_http_request', array( $this, 'pre_http_request_payment_link_success' ) );
 		$result = $payment_gateway->process_payment( $this->order->get_id() );
-		remove_filter( 'pre_http_request', array( $this, 'pre_http_request_charge_success' ) );
+		remove_filter( 'pre_http_request', array( $this, 'pre_http_request_payment_link_success' ) );
 
 		$this->assertSame( 'success', $result['result'] );
+
+		// Verify the new meta key is stored.
+		$order = wc_get_order( $this->order->get_id() );
+		$this->assertNotEmpty( $order->get_meta( '_coinbase_payment_link_id' ) );
 
 		// Remove order and created products.
 		WC_Helper_Order::delete_order( $this->order->get_id() );
 	}
 
 	/**
-	 * Return successful result for charge success.
+	 * Test that non-USD currency returns failure.
 	 */
-	public function pre_http_request_charge_success() {
+	public function test_currency_validation() {
+		// User set up.
+		$this->user = $this->factory->user->create( array(
+			'role' => 'administrator',
+		) );
+		wp_set_current_user( $this->user );
+
+		$this->create_products( 1 );
+		$this->order = WC_Helper_Order::create_order( $this->user );
+		$this->add_products_to_order( $this->order, array() );
+
+		$payment_gateway = WC()->payment_gateways->payment_gateways()['coinbase'];
+		$this->order->set_payment_method( $payment_gateway );
+		$this->order->calculate_totals();
+
+		// Set store currency to EUR.
+		update_option( 'woocommerce_currency', 'EUR' );
+
+		$result = $payment_gateway->process_payment( $this->order->get_id() );
+
+		$this->assertSame( 'fail', $result['result'] );
+
+		// Restore USD.
+		update_option( 'woocommerce_currency', 'USD' );
+
+		// Cleanup.
+		WC_Helper_Order::delete_order( $this->order->get_id() );
+	}
+
+	/**
+	 * Test webhook signature validation with timestamp-based HMAC.
+	 */
+	public function test_webhook_signature_validation() {
+		$payment_gateway = WC()->payment_gateways->payment_gateways()['coinbase'];
+
+		// Set a known webhook secret.
+		$payment_gateway->update_option( 'webhook_secret', 'test_secret_123' );
+
+		$payload   = '{"eventType":"payment_link.payment.success","metadata":{"order_id":"1"}}';
+		$timestamp = time();
+		$signature = hash_hmac( 'sha256', $timestamp . '.' . $payload, 'test_secret_123' );
+
+		// Simulate the x-hook0-signature header.
+		$_SERVER['HTTP_X_HOOK0_SIGNATURE'] = 't=' . $timestamp . ',v0=' . $signature;
+
+		// Need to include constants for the header name.
+		include_once dirname( dirname( __DIR__ ) ) . '/includes/class-coinbase-constants.php';
+
+		$result = $payment_gateway->validate_webhook( $payload );
+		$this->assertTrue( $result );
+
+		// Test with wrong signature.
+		$_SERVER['HTTP_X_HOOK0_SIGNATURE'] = 't=' . $timestamp . ',v0=invalidsignature';
+		$result = $payment_gateway->validate_webhook( $payload );
+		$this->assertFalse( $result );
+
+		// Clean up.
+		unset( $_SERVER['HTTP_X_HOOK0_SIGNATURE'] );
+	}
+
+	/**
+	 * Return successful result for payment link creation.
+	 */
+	public function pre_http_request_payment_link_success() {
 		return array(
-			'response' => array( 'code' => 200 ),
+			'response' => array( 'code' => 201 ),
 			'body'     => wp_json_encode( array(
-				'data' => array(
-					'code'       => 'ABC123',
-					'hosted_url' => 'https://foo.example/test',
-				),
+				'id'  => 'pl_ABC123',
+				'url' => 'https://business.coinbase.com/pay/test',
 			) ),
 		);
 	}
