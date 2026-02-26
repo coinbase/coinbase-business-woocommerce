@@ -1,16 +1,18 @@
-=== Coinbase Commerce Payment Gateway for WooCommerce ===
+=== Coinbase Business Payment Gateway for WooCommerce ===
 Contributors: pragbarrett, eddhurst, omidahourai, robbybarton
-Plugin URL: https://commerce.coinbase.com/
-Tags: coinbase, woocommerce, ethereum, commerce, crypto
+Plugin URL: https://coinbase.com/business
+Tags: coinbase, woocommerce, usdc, base, crypto
 Requires at least: 3.0
 Requires PHP: 8.1+
 Tested up to: 6.5.3
-Stable tag: 1.4.1
+Stable tag: 2.0.0
 License: GPLv2 or later
 
 == Description ==
 
-Accept cryptocurrencies through Coinbase Commerce such as USDC, Ethereum, and Matic on your WooCommerce store.
+Accept USDC payments through Coinbase Business Payment Links API on your WooCommerce store.
+
+**Note: This plugin requires your WooCommerce store currency to be set to USD.**
 
 == Installation ==
 
@@ -18,30 +20,30 @@ Accept cryptocurrencies through Coinbase Commerce such as USDC, Ethereum, and Ma
 
 1. Visit 'Plugins > Add New'
 2. Search for 'coinbase commerce'
-3. Activate Coinbase Commerce from your Plugins page.
+3. Activate Coinbase Business from your Plugins page.
 
 = From WordPress.org =
 
-1. Download Coinbase Commerce.
+1. Download Coinbase Business.
 2. Upload to your '/wp-content/plugins/' directory, using your favorite method (ftp, sftp, scp, etc...)
-3. Activate Coinbase Commerce from your Plugins page.
+3. Activate Coinbase Business from your Plugins page.
 
 = Once Activated =
 
 1. Go to WooCommerce > Settings > Payments
 2. Configure the plugin for your store
 
-= Configuring Coinbase Commerce =
+= Configuring Coinbase Business =
 
-* You will need to set up an account on https://commerce.coinbase.com/
+* You will need to set up an account on https://coinbase.com/business
 * Within the WordPress administration area, go to the WooCommerce > Settings > Payments page and you will see Coinbase in the table of payment gateways.
 * Clicking the Manage button on the right hand side will take you into the settings page, where you can configure the plugin for your store.
 
-**Note: If you are running version of WooCommerce older than 3.4.x your Coinbase Commerce tab will be underneath the WooCommerce > Settings > Checkout tab**
+**Note: If you are running version of WooCommerce older than 3.4.x your Coinbase tab will be underneath the WooCommerce > Settings > Checkout tab**
 
 = Enable / Disable =
 
-Turn the Coinbase Commerce payment method on / off for visitors at checkout.
+Turn the Coinbase Business payment method on / off for visitors at checkout.
 
 = Title =
 
@@ -51,22 +53,21 @@ Title of the payment method on the checkout page
 
 Description of the payment method on the checkout page
 
-= API Key =
+= CDP API Key Name =
 
-Your Coinbase Commerce API key. Available within the https://commerce.coinbase.com/dashboard/settings/
+Your CDP API key name from the Coinbase Business dashboard at https://coinbase.com/business
 
-Using an API key allows your website to periodically check Coinbase Commerce for payment confirmation.
+= CDP API Private Key =
 
-= Webhook Shared Secret =
+Your EC private key in PEM format. Paste the full key including BEGIN/END lines.
 
-Your webhook shared secret. Available within the https://commerce.coinbase.com/dashboard/settings/
+= Webhook Secret =
 
-Using webhooks allows Coinbase Commerce to send payment confirmation messages to the website. To fill this out:
+Your webhook secret from the Coinbase Business dashboard.
 
-1. In your Coinbase Commerce settings page, scroll to the 'Webhook subscriptions' section
-2. Click 'Add an endpoint' and paste the URL from within your settings page.
-3. Make sure to select "Send me all events", to receive all payment updates.
-4. Click "Show shared secret" and paste into the box within your settings page.
+Using webhooks allows Coinbase Business to send payment confirmation messages to the website. To fill this out:
+
+Follow the instructions at https://docs.cdp.coinbase.com/coinbase-business/payment-link-apis/webhooks to set up webhooks.
 
 = Debug log =
 
@@ -77,30 +78,46 @@ If this is checked, these are saved within your `wp-content/uploads/wc-logs/` fo
 
 == Frequently Asked Questions ==
 
-= What cryptocurrencies does the plugin support?
+= What payment method does this plugin support?
 
-The plugin supports all cryptocurrencies available at https://commerce.coinbase.com/
+This plugin supports USDC payments via Coinbase Business Payment Links.
+
+= What currency must my store use?
+
+Your WooCommerce store currency must be set to USD.
 
 = Prerequisites=
 
 To use this plugin with your WooCommerce store you will need:
 * WooCommerce plugin
+* PHP 8.1 or higher
+* Store currency set to USD
 
 
 
 == Upgrade Notice ==
 
-This plugin replaces the previous deprecated coinbase-woocommerce plugin.
+= 2.0.0 =
+Major upgrade: migrates from Coinbase Commerce (Charge API) to Coinbase Business (Payment Links API). Requires new CDP API credentials from coinbase.com/business. Store currency must be USD. USDC only.
 
 
 == Screenshots ==
 
 1. Admin panel
-2. Coinbase Commerce payment gateway on checkout page
-3. Cryptocurrency payment screen
+2. Coinbase Business payment gateway on checkout page
+3. USDC payment screen
 
 
 == Changelog ==
+
+= 2.0.0 =
+* Migrated from Coinbase Commerce Charge API to Coinbase Business Payment Links API
+* Authentication changed from API key to ES256 JWT (CDP API credentials)
+* Payment method changed to USDC only
+* Store currency must be USD
+* Updated webhook signature verification (x-hook0-signature with timestamp-based HMAC)
+* Reduced order timeout from 3 days to 1 day
+* Rebranded to Coinbase Business throughout
 
 = 1.4.1 =
 * Tested against WordPress 6.5.3

@@ -1,11 +1,11 @@
 <?php
 /*
-Plugin Name:  Coinbase Commerce
+Plugin Name:  Coinbase Business
 Plugin URI:   https://github.com/coinbase/coinbase-commerce-woocommerce/
-Description:  A payment gateway that allows your customers to pay with cryptocurrency via Coinbase Commerce (https://commerce.coinbase.com/)
-Version:      1.4.1
-Author:       Coinbase Commerce
-Author URI:   https://commerce.coinbase.com/
+Description:  A payment gateway that allows your customers to pay with USDC via Coinbase Business Payment Links API (https://coinbase.com/business)
+Version:      2.0.0
+Author:       Coinbase Business
+Author URI:   https://coinbase.com/business
 License:      GPLv3+
 License URI:  https://www.gnu.org/licenses/gpl-3.0.html
 Text Domain:  coinbase
@@ -14,12 +14,12 @@ Domain Path:  /languages
 WC requires at least: 3.0.9
 WC tested up to: 8.9.1
 
-Coinbase Commerce is free software: you can redistribute it and/or modify
+Coinbase Business is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 any later version.
 
-Coinbase Commerce is distributed in the hope that it will be useful,
+Coinbase Business is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU General Public License for more details.
@@ -30,21 +30,24 @@ along with Coinbase WooCommerce. If not, see https://www.gnu.org/licenses/gpl-3.
 
 function cb_init_gateway() {
 	// If WooCommerce is available, initialise WC parts.
-	
+
 	/** DOCBLOCK - Makes linter happy.
-	 * 
+	 *
 	 * @since today
 	 */
 	if ( in_array( 'woocommerce/woocommerce.php', apply_filters( 'active_plugins', get_option( 'active_plugins' ) ) ) ) {
 		require_once 'class-wc-gateway-coinbase.php';
+		// Legacy: keep blockchain pending status registration for existing orders.
 		add_action( 'init', 'cb_wc_register_blockchain_status' );
 		add_filter( 'woocommerce_valid_order_statuses_for_payment', 'cb_wc_status_valid_for_payment', 10, 2 );
 		add_action( 'cb_check_orders', 'cb_wc_check_orders' );
 		add_filter( 'woocommerce_payment_gateways', 'cb_wc_add_coinbase_class' );
+		// Legacy: keep blockchain pending status in order status list for existing orders.
 		add_filter( 'wc_order_statuses', 'cb_wc_add_status' );
 		add_action( 'woocommerce_admin_order_data_after_order_details', 'cb_order_meta_general' );
 		add_action( 'woocommerce_order_details_after_order_table', 'cb_order_meta_general' );
 		add_filter( 'woocommerce_email_order_meta_fields', 'cb_custom_woocommerce_email_order_meta_fields', 10, 3 );
+		// Legacy: keep email action for blockchainpending → processing transition.
 		add_filter( 'woocommerce_email_actions', 'cb_register_email_action' );
 		add_action( 'woocommerce_email', 'cb_add_email_triggers' );
 		add_action( 'before_woocommerce_init', function() {
@@ -85,7 +88,8 @@ function cb_wc_check_orders() {
 }
 
 /**
- * Register new status with ID "wc-blockchainpending" and label "Blockchain Pending"
+ * Legacy: Register "wc-blockchainpending" status for existing orders
+ * from the previous Coinbase Commerce integration.
  */
 function cb_wc_register_blockchain_status() {
 	register_post_status( 'wc-blockchainpending', array(
@@ -98,7 +102,7 @@ function cb_wc_register_blockchain_status() {
 }
 
 /**
- * Register wc-blockchainpending status as valid for payment.
+ * Legacy: Register wc-blockchainpending status as valid for payment.
  */
 function cb_wc_status_valid_for_payment( $statuses, $order ) {
 	$statuses[] = 'wc-blockchainpending';
@@ -106,8 +110,9 @@ function cb_wc_status_valid_for_payment( $statuses, $order ) {
 }
 
 /**
- * Add registered status to list of WC Order statuses
- * 
+ * Legacy: Add registered status to list of WC Order statuses.
+ * Kept for existing orders that may have this status.
+ *
  * @param array $wc_statuses_arr Array of all order statuses on the website.
  */
 function cb_wc_add_status( $wc_statuses_arr ) {
@@ -127,7 +132,8 @@ function cb_wc_add_status( $wc_statuses_arr ) {
 
 
 /**
- * Add order Coinbase meta after General and before Billing
+ * Add order Coinbase meta after General and before Billing.
+ * Shows either payment link ID (new) or charge ID (legacy), whichever exists.
  *
  * @see: https://rudrastyh.com/woocommerce/customize-order-details.html
  *
@@ -135,21 +141,28 @@ function cb_wc_add_status( $wc_statuses_arr ) {
  */
 function cb_order_meta_general( $order ) {
 	if ($order->get_payment_method() == 'coinbase') {
-		?>
+		$payment_link_id = $order->get_meta( '_coinbase_payment_link_id' );
+		$charge_id       = $order->get_meta( '_coinbase_charge_id' );
+		$reference       = $payment_link_id ? $payment_link_id : $charge_id;
 
-		<br class="clear"/>
-		<h3>Coinbase Commerce Data</h3>
-		<div class="">
-			<p>Coinbase Commerce Reference # <?php echo esc_html($order->get_meta('_coinbase_charge_id')); ?></p>
-		</div>
+		if ( $reference ) {
+			?>
 
-		<?php
+			<br class="clear"/>
+			<h3>Coinbase Business Data</h3>
+			<div class="">
+				<p>Coinbase Reference # <?php echo esc_html( $reference ); ?></p>
+			</div>
+
+			<?php
+		}
 	}
 }
 
 
 /**
- * Add Coinbase meta to WC emails
+ * Add Coinbase meta to WC emails.
+ * Prefers new payment link ID, falls back to legacy charge ID.
  *
  * @see https://docs.woocommerce.com/document/add-a-custom-field-in-an-order-to-the-emails/
  *
@@ -160,10 +173,16 @@ function cb_order_meta_general( $order ) {
  */
 function cb_custom_woocommerce_email_order_meta_fields( $fields, $sent_to_admin, $order ) {
 	if ($order->get_payment_method() == 'coinbase') {
-		$fields['coinbase_commerce_reference'] = array(
-			'label' => __( 'Coinbase Commerce Reference #' ),
-			'value' => $order->get_meta( '_coinbase_charge_id' ),
-		);
+		$payment_link_id = $order->get_meta( '_coinbase_payment_link_id' );
+		$charge_id       = $order->get_meta( '_coinbase_charge_id' );
+		$reference       = $payment_link_id ? $payment_link_id : $charge_id;
+
+		if ( $reference ) {
+			$fields['coinbase_reference'] = array(
+				'label' => __( 'Coinbase Reference #' ),
+				'value' => $reference,
+			);
+		}
 	}
 
 	return $fields;
@@ -171,7 +190,8 @@ function cb_custom_woocommerce_email_order_meta_fields( $fields, $sent_to_admin,
 
 
 /**
- * Registers "woocommerce_order_status_blockchainpending_to_processing" as a WooCommerce email action.
+ * Legacy: Registers "woocommerce_order_status_blockchainpending_to_processing"
+ * as a WooCommerce email action for existing orders.
  *
  * @param array $email_actions
  *
@@ -185,7 +205,8 @@ function cb_register_email_action( $email_actions ) {
 
 
 /**
- * Adds new triggers for emails sent when the order status transitions to Processing.
+ * Legacy: Adds triggers for emails sent when the order status transitions
+ * from blockchainpending to Processing, for existing orders.
  *
  * @param WC_Emails $wc_emails
  */
@@ -200,7 +221,7 @@ function cb_add_email_triggers( $wc_emails ) {
 	 * @param array $emails List of email class names.
 	 *
 	 * @return array
-	 * 
+	 *
 	 * @since today
 	 */
 	$processing_order_emails = apply_filters( 'cb_processing_order_emails', [

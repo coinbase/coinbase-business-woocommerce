@@ -5,16 +5,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Sends API requests to Coinbase.
+ * Sends API requests to Coinbase Business Payment Links API.
  */
 class Coinbase_API_Handler {
 
 	/**
-	 * Log variable function
-	 * 
+	 * Log variable function.
+	 *
 	 * @var string/array Log variable function.
-	 * */
+	 */
 	public static $log;
+
 	/**
 	 * Call the $log variable function.
 	 *
@@ -27,161 +28,123 @@ class Coinbase_API_Handler {
 	}
 
 	/**
-	 * Coinbase API url
-	 * 
-	 * @var string Coinbase API url.
-	 * */
-	public static $api_url = 'https://api.commerce.coinbase.com/';
+	 * CDP API Key Name.
+	 *
+	 * @var string
+	 */
+	public static $cdp_key_name;
 
 	/**
-	 * Coinbase API version
-	 * 
-	 * @var string Coinbase API version.
-	 * */
-	public static $api_version = '2018-03-22';
-
-	/**
-	 * Coinbase API key
-	 * 
-	 * @var string Coinbase API key.
-	 * */
-	public static $api_key;
+	 * CDP API Private Key (PEM).
+	 *
+	 * @var string
+	 */
+	public static $cdp_private_key;
 
 	/**
 	 * Get the response from an API request.
-	 * 
-	 * @param  string $endpoint
-	 * @param  array  $params
-	 * @param  string $method
-	 * @return array
+	 *
+	 * @param  string $path   API path (e.g., /api/v1/payment-links).
+	 * @param  array  $params Request body parameters.
+	 * @param  string $method HTTP method.
+	 * @return array  [bool $success, mixed $data]
 	 */
-	public static function send_request( $endpoint, $params = array(), $method = 'GET' ) {
+	public static function send_request( $path, $params = array(), $method = 'GET' ) {
 		// phpcs:ignore
-		self::log( 'Coinbase Request Args for ' . $endpoint . ': ' . print_r( $params, true ) );
+		self::log( 'Coinbase Request Args for ' . $method . ' ' . $path . ': ' . print_r( $params, true ) );
+
+		try {
+			$jwt_auth = new Coinbase_JWT_Auth( self::$cdp_key_name, self::$cdp_private_key );
+			$token    = $jwt_auth->generate_token( $method, $path );
+		} catch ( Exception $e ) {
+			self::log( 'JWT generation failed: ' . $e->getMessage(), 'error' );
+			return array( false, 'JWT generation failed: ' . $e->getMessage() );
+		}
+
 		$args = array(
 			'method'  => $method,
 			'headers' => array(
-				'X-CC-Api-Key' => self::$api_key,
-				'X-CC-Version' => self::$api_version,
-				'Content-Type' => 'application/json'
-			)
+				'Authorization' => 'Bearer ' . $token,
+				'Content-Type'  => 'application/json',
+			),
+			'timeout' => 30,
 		);
 
-		$url = self::$api_url . $endpoint;
+		$url = Coinbase_Constants::API_BASE_URL . $path;
 
-		if ( in_array( $method, array( 'POST', 'PUT' ) ) ) {
-			$args['body'] = json_encode( $params );
+		if ( in_array( $method, array( 'POST', 'PUT' ), true ) ) {
+			$args['body'] = wp_json_encode( $params );
 		} else {
 			$url = add_query_arg( $params, $url );
 		}
+
 		$response = wp_remote_request( esc_url_raw( $url ), $args );
 
 		if ( is_wp_error( $response ) ) {
 			self::log( 'WP response error: ' . $response->get_error_message() );
 			return array( false, $response->get_error_message() );
-		} else {
-			$result = json_decode( $response['body'], true );
-			if ( ! empty( $result['warnings'] ) ) {
-				foreach ( $result['warnings'] as $warning ) {
-					self::log( 'API Warning: ' . $warning );
-				}
-			}
-
-			$code = $response['response']['code'];
-
-			if ( in_array( $code, array( 200, 201 ), true ) ) {
-				return array( true, $result );
-			} else {
-				$e      = empty( $result['error']['message'] ) ? '' : $result['error']['message'];
-				$errors = array(
-					400 => 'Error response from API: ' . $e,
-					401 => 'Authentication error, please check your API key.',
-					429 => 'Coinbase API rate limit exceeded.',
-				);
-
-				if ( array_key_exists( $code, $errors ) ) {
-					$msg = $errors[ $code ];
-				} else {
-					$msg = 'Unknown response from API: ' . $code;
-				}
-				self::log( $msg );
-
-				return array( false, $code );
-			}
-		}
-	}
-
-	/**
-	 * Check if authentication is successful.
-	 * 
-	 * @return bool|string
-	 */
-	public static function check_auth() {
-		$result = self::send_request( 'checkouts', array( 'limit' => 0 ) );
-
-		if ( ! $result[0] ) {
-			return 401 === $result[1] ? false : 'error';
 		}
 
-		return true;
-	}
+		$result = json_decode( $response['body'], true );
+		$code   = $response['response']['code'];
 
-	/**
-	 * Create a new charge request.
-	 * 
-	 * @param  int    $amount
-	 * @param  string $currency
-	 * @param  array  $metadata
-	 * @param  string $redirect
-	 * @param  string $name
-	 * @param  string $desc
-	 * @param  string $cancel
-	 * @return array
-	 */
-	public static function create_charge( $amount = null, $currency = null, $metadata = null,
-										$redirect = null, $name = null, $desc = null,
-										$cancel = null ) {
-		$args = array(
-			'name'        => is_null( $name ) ? get_bloginfo( 'name' ) : $name,
-			'description' => is_null( $desc ) ? get_bloginfo( 'description' ) : $desc,
+		if ( in_array( $code, array( 200, 201 ), true ) ) {
+			return array( true, $result );
+		}
+
+		$e      = is_array( $result ) && ! empty( $result['error']['message'] ) ? $result['error']['message'] : '(non-JSON or empty body)';
+		$errors = array(
+			400 => 'Error response from API: ' . $e,
+			401 => 'Authentication error, please check your CDP API key and private key.',
+			403 => 'Access denied. Please verify your API key permissions.',
+			429 => 'Coinbase API rate limit exceeded.',
 		);
-		$args['name'] = sanitize_text_field( $args['name'] );
-		$args['description'] = sanitize_text_field( $args['description'] );
 
-		if ( is_null( $amount ) ) {
-			$args['pricing_type'] = 'no_price';
-		} elseif ( is_null( $currency ) ) {
-			self::log( 'Error: if amount is given, currency must be given (in create_charge()).', 'error' );
-			return array( false, 'Missing currency.' );
+		if ( array_key_exists( $code, $errors ) ) {
+			$msg = $errors[ $code ];
 		} else {
-			$args['pricing_type'] = 'fixed_price';
-			$args['local_price']  = array(
-				'amount'   => $amount,
-				'currency' => $currency,
-			);
+			$msg = 'Unexpected API response (HTTP ' . $code . '): ' . $e;
+		}
+		self::log( $msg );
+
+		return array( false, $msg );
+	}
+
+	/**
+	 * Create a new payment link.
+	 *
+	 * @param  string $amount      Payment amount in USD.
+	 * @param  array  $metadata    Order metadata.
+	 * @param  string $success_url Redirect URL on success.
+	 * @param  string $fail_url    Redirect URL on failure.
+	 * @param  string $description Optional description (max 500 chars).
+	 * @return array  [bool $success, mixed $data]
+	 */
+	public static function create_payment_link( $amount, $metadata, $success_url, $fail_url, $description = null ) {
+		$body = array(
+			'amount'             => (string) $amount,
+			'currency'           => Coinbase_Constants::PAYMENT_CURRENCY,
+			'network'            => Coinbase_Constants::PAYMENT_NETWORK,
+			'metadata'           => $metadata,
+			'successRedirectUrl' => $success_url,
+			'failRedirectUrl'    => $fail_url,
+		);
+
+		if ( ! empty( $description ) ) {
+			$body['description'] = mb_substr( $description, 0, 500 );
 		}
 
-		if ( ! is_null( $metadata ) ) {
-			$args['metadata'] = $metadata;
-		}
-		if ( ! is_null( $redirect ) ) {
-			$args['redirect_url'] = $redirect;
-		}
-		if ( ! is_null( $cancel ) ) {
-			$args['cancel_url'] = $cancel;
-		}
+		return self::send_request( Coinbase_Constants::API_PATH, $body, 'POST' );
+	}
 
-		$result = self::send_request( 'charges', $args, 'POST' );
-
-		// Cache last-known available payment methods.
-		if ( ! empty( $result[1]['data']['addresses'] ) ) {
-			update_option(
-				'coinbase_payment_methods',
-				array_keys( $result[1]['data']['addresses'] ),
-				false
-			);
-		}
-
-		return $result;
+	/**
+	 * Retrieve a payment link by ID.
+	 *
+	 * @param  string $id Payment link ID.
+	 * @return array  [bool $success, mixed $data]
+	 */
+	public static function get_payment_link( $id ) {
+		$path = Coinbase_Constants::API_PATH . '/' . $id;
+		return self::send_request( $path );
 	}
 }
