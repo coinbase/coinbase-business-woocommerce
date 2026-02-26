@@ -229,6 +229,8 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 		);
 
 		if ( ! $result[0] ) {
+			self::log( 'create_payment_link failed: ' . $result[1], 'error' );
+			wc_add_notice( __( 'Unable to create payment link. Please try again or contact support.', 'coinbase' ), 'error' );
 			return array( 'result' => 'fail' );
 		}
 

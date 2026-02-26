@@ -67,6 +67,7 @@ class Coinbase_API_Handler {
 				'Authorization' => 'Bearer ' . $token,
 				'Content-Type'  => 'application/json',
 			),
+			'timeout' => 30,
 		);
 
 		$url = Coinbase_Constants::API_BASE_URL . $path;
@@ -91,21 +92,22 @@ class Coinbase_API_Handler {
 			return array( true, $result );
 		}
 
-		$e      = empty( $result['error']['message'] ) ? '' : $result['error']['message'];
+		$e      = is_array( $result ) && ! empty( $result['error']['message'] ) ? $result['error']['message'] : '(non-JSON or empty body)';
 		$errors = array(
 			400 => 'Error response from API: ' . $e,
 			401 => 'Authentication error, please check your CDP API key and private key.',
+			403 => 'Access denied. Please verify your API key permissions.',
 			429 => 'Coinbase API rate limit exceeded.',
 		);
 
 		if ( array_key_exists( $code, $errors ) ) {
 			$msg = $errors[ $code ];
 		} else {
-			$msg = 'Unknown response from API: ' . $code;
+			$msg = 'Unexpected API response (HTTP ' . $code . '): ' . $e;
 		}
 		self::log( $msg );
 
-		return array( false, $code );
+		return array( false, $msg );
 	}
 
 	/**

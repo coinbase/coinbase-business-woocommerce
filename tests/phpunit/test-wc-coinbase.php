@@ -179,6 +179,87 @@ class WC_Coinbase_Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that an expired timestamp is rejected by webhook validation.
+	 */
+	public function test_webhook_signature_rejects_expired_timestamp() {
+		$payment_gateway = WC()->payment_gateways->payment_gateways()['coinbase'];
+		$payment_gateway->update_option( 'webhook_secret', 'test_secret_123' );
+
+		$payload   = '{"eventType":"payment_link.payment.success","metadata":{"order_id":"1"}}';
+		$timestamp = time() - 400; // >300s old.
+		$signature = hash_hmac( 'sha256', $timestamp . '.' . $payload, 'test_secret_123' );
+
+		$_SERVER['HTTP_X_HOOK0_SIGNATURE'] = 't=' . $timestamp . ',v0=' . $signature;
+
+		include_once dirname( dirname( __DIR__ ) ) . '/includes/class-coinbase-constants.php';
+
+		$result = $payment_gateway->validate_webhook( $payload );
+		$this->assertFalse( $result );
+
+		unset( $_SERVER['HTTP_X_HOOK0_SIGNATURE'] );
+	}
+
+	/**
+	 * Test that malformed or missing signature header fields are rejected.
+	 */
+	public function test_webhook_signature_rejects_malformed_header() {
+		$payment_gateway = WC()->payment_gateways->payment_gateways()['coinbase'];
+		$payment_gateway->update_option( 'webhook_secret', 'test_secret_123' );
+
+		$payload = '{"eventType":"payment_link.payment.success","metadata":{"order_id":"1"}}';
+
+		include_once dirname( dirname( __DIR__ ) ) . '/includes/class-coinbase-constants.php';
+
+		// Missing t= (only v0=...).
+		$_SERVER['HTTP_X_HOOK0_SIGNATURE'] = 'v0=somesignature';
+		$this->assertFalse( $payment_gateway->validate_webhook( $payload ) );
+
+		// Missing v0= (only t=...).
+		$_SERVER['HTTP_X_HOOK0_SIGNATURE'] = 't=' . time();
+		$this->assertFalse( $payment_gateway->validate_webhook( $payload ) );
+
+		// Completely absent header.
+		unset( $_SERVER['HTTP_X_HOOK0_SIGNATURE'] );
+		$this->assertFalse( $payment_gateway->validate_webhook( $payload ) );
+	}
+
+	/**
+	 * Test get_payment_link returns success on 200 response.
+	 */
+	public function test_get_payment_link_success() {
+		$payment_gateway = WC()->payment_gateways->payment_gateways()['coinbase'];
+
+		// Init the API so the handler class is loaded.
+		$init_api = new ReflectionMethod( $payment_gateway, 'init_api' );
+		$init_api->setAccessible( true );
+		$init_api->invoke( $payment_gateway );
+
+		add_filter( 'pre_http_request', array( $this, 'pre_http_request_get_payment_link_success' ) );
+		$result = Coinbase_API_Handler::get_payment_link( 'pl_ABC123' );
+		remove_filter( 'pre_http_request', array( $this, 'pre_http_request_get_payment_link_success' ) );
+
+		$this->assertTrue( $result[0] );
+		$this->assertSame( 'pl_ABC123', $result[1]['id'] );
+	}
+
+	/**
+	 * Test get_payment_link returns failure on error response.
+	 */
+	public function test_get_payment_link_failure() {
+		$payment_gateway = WC()->payment_gateways->payment_gateways()['coinbase'];
+
+		$init_api = new ReflectionMethod( $payment_gateway, 'init_api' );
+		$init_api->setAccessible( true );
+		$init_api->invoke( $payment_gateway );
+
+		add_filter( 'pre_http_request', array( $this, 'pre_http_request_get_payment_link_failure' ) );
+		$result = Coinbase_API_Handler::get_payment_link( 'pl_INVALID' );
+		remove_filter( 'pre_http_request', array( $this, 'pre_http_request_get_payment_link_failure' ) );
+
+		$this->assertFalse( $result[0] );
+	}
+
+	/**
 	 * Return successful result for payment link creation.
 	 */
 	public function pre_http_request_payment_link_success() {
@@ -187,6 +268,32 @@ class WC_Coinbase_Test extends WP_UnitTestCase {
 			'body'     => wp_json_encode( array(
 				'id'  => 'pl_ABC123',
 				'url' => 'https://business.coinbase.com/pay/test',
+			) ),
+		);
+	}
+
+	/**
+	 * Return successful result for get_payment_link.
+	 */
+	public function pre_http_request_get_payment_link_success() {
+		return array(
+			'response' => array( 'code' => 200 ),
+			'body'     => wp_json_encode( array(
+				'id'        => 'pl_ABC123',
+				'url'       => 'https://business.coinbase.com/pay/test',
+				'eventType' => 'payment_link.payment.success',
+			) ),
+		);
+	}
+
+	/**
+	 * Return error result for get_payment_link.
+	 */
+	public function pre_http_request_get_payment_link_failure() {
+		return array(
+			'response' => array( 'code' => 400 ),
+			'body'     => wp_json_encode( array(
+				'error' => array( 'message' => 'Payment link not found' ),
 			) ),
 		);
 	}
