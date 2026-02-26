@@ -356,7 +356,8 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 			exit;  // 200 response for acknowledgement.
 		}
 
-		wp_die( 'Coinbase Webhook Request Failure', 'Coinbase Webhook', array( 'response' => 500 ) );
+		status_header( 200 );
+		exit;
 	}
 
 	/**
