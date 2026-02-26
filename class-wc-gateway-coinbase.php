@@ -317,6 +317,8 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 	 * Handle requests sent to webhook.
 	 */
 	public function handle_webhook() {
+		include_once dirname( __FILE__ ) . '/includes/class-coinbase-constants.php';
+
 		$payload = file_get_contents( 'php://input' );
 		if ( ! empty( $payload ) && $this->validate_webhook( $payload ) ) {
 			$data = json_decode( $payload, true );
