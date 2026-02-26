@@ -2,10 +2,10 @@
 /*
 Plugin Name:  Coinbase Business
 Plugin URI:   https://github.com/coinbase/coinbase-commerce-woocommerce/
-Description:  A payment gateway that allows your customers to pay with USDC on Base network via Coinbase Business Payment Links API (https://business.coinbase.com/)
+Description:  A payment gateway that allows your customers to pay with USDC via Coinbase Business Payment Links API (https://coinbase.com/business)
 Version:      2.0.0
 Author:       Coinbase Business
-Author URI:   https://business.coinbase.com/
+Author URI:   https://coinbase.com/business
 License:      GPLv3+
 License URI:  https://www.gnu.org/licenses/gpl-3.0.html
 Text Domain:  coinbase

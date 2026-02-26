@@ -42,14 +42,14 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 		$this->order_button_text  = __( 'Pay with Coinbase', 'coinbase' );
 		$this->method_title       = __( 'Coinbase Business', 'coinbase' );
 		$this->method_description = '<p>' .
-			__( 'A payment gateway that sends your customers to Coinbase Business to pay with USDC on Base network.', 'coinbase' )
+			__( 'A payment gateway that sends your customers to Coinbase Business to pay with USDC.', 'coinbase' )
 			. '</p><p>' .
 			sprintf(
 				__( 'If you do not currently have a Coinbase Business account, you can set one up here: %s', 'coinbase' ),
-				'<a target="_blank" href="https://business.coinbase.com/">https://business.coinbase.com/</a>'
+				'<a target="_blank" href="https://coinbase.com/business">https://coinbase.com/business</a>'
 			);
 
-		// Timeout after 1 day. USDC on Base confirms in seconds,
+		// Timeout after 1 day. USDC confirms in seconds,
 		// but allow time for the customer to complete the payment flow.
 		$this->timeout = ( new WC_DateTime() )->sub( new DateInterval( 'P1D' ) );
 
@@ -128,7 +128,7 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 				'type'        => 'text',
 				'desc_tip'    => true,
 				'description' => __( 'This controls the description which the user sees during checkout.', 'woocommerce' ),
-				'default'     => __( 'Pay with USDC on Base network.', 'coinbase' ),
+				'default'     => __( 'Pay with USDC.', 'coinbase' ),
 			),
 			'cdp_key_name'    => array(
 				'title'       => __( 'CDP API Key Name', 'coinbase' ),
@@ -139,7 +139,7 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 						'Your CDP API key name from the Coinbase Business dashboard: %s',
 						'coinbase'
 					),
-					esc_url( 'https://business.coinbase.com/' )
+					esc_url( 'https://coinbase.com/business' )
 				),
 			),
 			'cdp_private_key' => array(

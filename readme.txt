@@ -1,6 +1,6 @@
 === Coinbase Business Payment Gateway for WooCommerce ===
 Contributors: pragbarrett, eddhurst, omidahourai, robbybarton
-Plugin URL: https://business.coinbase.com/
+Plugin URL: https://coinbase.com/business
 Tags: coinbase, woocommerce, usdc, base, crypto
 Requires at least: 3.0
 Requires PHP: 8.1+
@@ -10,7 +10,7 @@ License: GPLv2 or later
 
 == Description ==
 
-Accept USDC payments on Base network through Coinbase Business Payment Links API on your WooCommerce store.
+Accept USDC payments through Coinbase Business Payment Links API on your WooCommerce store.
 
 **Note: This plugin requires your WooCommerce store currency to be set to USD.**
 
@@ -35,7 +35,7 @@ Accept USDC payments on Base network through Coinbase Business Payment Links API
 
 = Configuring Coinbase Business =
 
-* You will need to set up an account on https://business.coinbase.com/
+* You will need to set up an account on https://coinbase.com/business
 * Within the WordPress administration area, go to the WooCommerce > Settings > Payments page and you will see Coinbase in the table of payment gateways.
 * Clicking the Manage button on the right hand side will take you into the settings page, where you can configure the plugin for your store.
 
@@ -55,7 +55,7 @@ Description of the payment method on the checkout page
 
 = CDP API Key Name =
 
-Your CDP API key name from the Coinbase Business dashboard at https://business.coinbase.com/
+Your CDP API key name from the Coinbase Business dashboard at https://coinbase.com/business
 
 = CDP API Private Key =
 
@@ -83,7 +83,7 @@ If this is checked, these are saved within your `wp-content/uploads/wc-logs/` fo
 
 = What payment method does this plugin support?
 
-This plugin supports USDC payments on the Base network via Coinbase Business Payment Links.
+This plugin supports USDC payments via Coinbase Business Payment Links.
 
 = What currency must my store use?
 
@@ -101,7 +101,7 @@ To use this plugin with your WooCommerce store you will need:
 == Upgrade Notice ==
 
 = 2.0.0 =
-Major upgrade: migrates from Coinbase Commerce (Charge API) to Coinbase Business (Payment Links API). Requires new CDP API credentials from business.coinbase.com. Store currency must be USD. USDC on Base network only.
+Major upgrade: migrates from Coinbase Commerce (Charge API) to Coinbase Business (Payment Links API). Requires new CDP API credentials from coinbase.com/business. Store currency must be USD. USDC only.
 
 
 == Screenshots ==
@@ -116,7 +116,7 @@ Major upgrade: migrates from Coinbase Commerce (Charge API) to Coinbase Business
 = 2.0.0 =
 * Migrated from Coinbase Commerce Charge API to Coinbase Business Payment Links API
 * Authentication changed from API key to ES256 JWT (CDP API credentials)
-* Payment method changed to USDC on Base network only
+* Payment method changed to USDC only
 * Store currency must be USD
 * Updated webhook signature verification (x-hook0-signature with timestamp-based HMAC)
 * Reduced order timeout from 3 days to 1 day

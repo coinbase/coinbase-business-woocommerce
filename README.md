@@ -1,6 +1,6 @@
 # Coinbase Business for WooCommerce
 
-A WooCommerce payment gateway that allows your customers to pay with USDC on Base network via Coinbase Business Payment Links API.
+A WooCommerce payment gateway that allows your customers to pay with USDC via Coinbase Business Payment Links API.
 
 **Note: This plugin requires your WooCommerce store currency to be set to USD.**
 
@@ -94,7 +94,7 @@ To use this plugin with your WooCommerce store you will need:
 
 **What payment method does this plugin support?**
 
-This plugin supports USDC payments on the Base network via Coinbase Business Payment Links.
+This plugin supports USDC payments via Coinbase Business Payment Links.
 
 **What currency must my store use?**
 
@@ -110,7 +110,7 @@ This project is licensed under the Apache 2.0 License
 
 - Migrated from Coinbase Commerce Charge API to Coinbase Business Payment Links API
 - Authentication changed from API key to ES256 JWT (CDP API credentials)
-- Payment method changed to USDC on Base network only
+- Payment method changed to USDC only
 - Store currency must be USD
 - Updated webhook signature verification (x-hook0-signature with timestamp-based HMAC)
 - Reduced order timeout from 3 days to 1 day
@@ -165,8 +165,8 @@ This project is licensed under the Apache 2.0 License
 - Coinbase Commerce
 
 [//]: # "Comments for storing reference material in. Stripped out when processing the markdown"
-[Coinbase Business]: https://business.coinbase.com/
-[Coinbase Business dashboard]: https://business.coinbase.com/
+[Coinbase Business]: https://coinbase.com/business
+[Coinbase Business dashboard]: https://coinbase.com/business
 [WooCommerce]: https://woocommerce.com/
 [WordPress]: https://wordpress.org/
 [WordPress.org plugin repository]: https://wordpress.org/plugins/coinbase-commerce/
