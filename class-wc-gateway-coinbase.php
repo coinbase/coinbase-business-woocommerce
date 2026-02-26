@@ -451,8 +451,8 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 		if ( Coinbase_Constants::EVENT_PAYMENT_SUCCESS === $event_type ) {
 			// Extract transaction ID from payment URL.
 			$txn_id = ! empty( $data['url'] ) ? basename( $data['url'] ) : '';
-			$order->update_status( 'processing', __( 'Coinbase payment was successfully processed.', 'coinbase' ) );
 			$order->payment_complete( $txn_id );
+			$order->update_status( 'completed', __( 'Coinbase payment was successfully processed.', 'coinbase' ) );
 		} elseif ( Coinbase_Constants::EVENT_PAYMENT_FAILED === $event_type ) {
 			$order->update_status( 'failed', __( 'Coinbase payment failed.', 'coinbase' ) );
 		} elseif ( Coinbase_Constants::EVENT_PAYMENT_EXPIRED === $event_type ) {
