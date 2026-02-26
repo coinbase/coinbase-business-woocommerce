@@ -158,7 +158,7 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 
 				. '<br /><br />' .
 
-				__( '1. In your Coinbase Business dashboard, go to the webhook settings section', 'coinbase' )
+				__( '1. Follow the instructions at https://docs.cdp.coinbase.com/coinbase-business/payment-link-apis/webhooks to set up webhooks.', 'coinbase' )
 
 				. '<br />' .
 
@@ -166,11 +166,7 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 
 				. '<br />' .
 
-				__( '3. Select all payment link events (success, failed, expired)', 'coinbase' )
-
-				. '<br />' .
-
-				__( '4. Copy the webhook secret and paste it into the box above.', 'coinbase' ),
+				__( '3. Copy the webhook secret and paste it into the box above.', 'coinbase' ),
 
 			),
 			'show_icons'      => array(

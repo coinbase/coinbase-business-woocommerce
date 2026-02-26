@@ -70,10 +70,7 @@ Your webhook secret from the [Coinbase Business dashboard].
 
 Using webhooks allows Coinbase Business to send payment confirmation messages to the website. To fill this out:
 
-1. In your Coinbase Business dashboard, go to the webhook settings section
-2. Add a webhook endpoint with the URL from within your settings page.
-3. Select all payment link events (success, failed, expired).
-4. Copy the webhook secret and paste into the box within your settings page.
+Follow the instructions at https://docs.cdp.coinbase.com/coinbase-business/payment-link-apis/webhooks to set up webhooks.
 
 ### Debug log
 
