@@ -6,24 +6,6 @@ A WooCommerce payment gateway that allows your customers to pay with USDC via Co
 
 ## Installation
 
-### From WordPress.org
-
-This plugin is available on the [WordPress.org plugin repository], and can be installed either directly from there or from the admin dashboard within your website.
-
-#### Within your WordPress dashboard
-
-1. Visit 'Plugins > Add New'
-2. Search for 'Coinbase Commerce'
-3. Activate Coinbase Business from your Plugins page.
-
-#### From WordPress.org plugin repository
-
-1. Download Coinbase Business from <https://wordpress.org/plugins/coinbase-commerce/>
-2. Upload to your '/wp-content/plugins/' directory, using your favorite method (ftp, sftp, scp, etc...)
-3. Activate Coinbase Business from your Plugins page.
-
-### From this repository
-
 Within the Github repository, click the Clone or Download button and Download a zip file of the repository, or clone it directly via command line.
 
 Within your WordPress administration panel, go to Plugins > Add New and click the Upload Plugin button on the top of the page.
