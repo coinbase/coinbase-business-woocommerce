@@ -297,4 +297,86 @@ class WC_Coinbase_Test extends WP_UnitTestCase {
 			) ),
 		);
 	}
+
+	/**
+	 * Test that sandbox mode returns sandbox API path.
+	 */
+	public function test_sandbox_mode_uses_sandbox_api_path() {
+		$payment_gateway = WC()->payment_gateways->payment_gateways()['coinbase'];
+
+		$init_api = new ReflectionMethod( $payment_gateway, 'init_api' );
+		$init_api->setAccessible( true );
+		$init_api->invoke( $payment_gateway );
+
+		Coinbase_API_Handler::$sandbox_mode = true;
+		$this->assertSame( '/sandbox/api/v1/payment-links', Coinbase_API_Handler::get_api_path() );
+
+		// Clean up.
+		Coinbase_API_Handler::$sandbox_mode = false;
+	}
+
+	/**
+	 * Test that production mode returns production API path.
+	 */
+	public function test_production_mode_uses_production_api_path() {
+		$payment_gateway = WC()->payment_gateways->payment_gateways()['coinbase'];
+
+		$init_api = new ReflectionMethod( $payment_gateway, 'init_api' );
+		$init_api->setAccessible( true );
+		$init_api->invoke( $payment_gateway );
+
+		Coinbase_API_Handler::$sandbox_mode = false;
+		$this->assertSame( '/api/v1/payment-links', Coinbase_API_Handler::get_api_path() );
+	}
+
+	/**
+	 * Test webhook uses sandbox secret when sandbox mode is enabled.
+	 */
+	public function test_webhook_uses_sandbox_secret_in_sandbox_mode() {
+		$payment_gateway = WC()->payment_gateways->payment_gateways()['coinbase'];
+
+		$payment_gateway->update_option( 'sandbox_mode', 'yes' );
+		$payment_gateway->update_option( 'webhook_secret', 'production_secret' );
+		$payment_gateway->update_option( 'sandbox_webhook_secret', 'sandbox_secret' );
+
+		$payload   = '{"eventType":"payment_link.payment.success","metadata":{"order_id":"1"}}';
+		$timestamp = time();
+		$signature = hash_hmac( 'sha256', $timestamp . '.' . $payload, 'sandbox_secret' );
+
+		$_SERVER['HTTP_X_HOOK0_SIGNATURE'] = 't=' . $timestamp . ',v0=' . $signature;
+
+		include_once dirname( dirname( __DIR__ ) ) . '/includes/class-coinbase-constants.php';
+
+		$result = $payment_gateway->validate_webhook( $payload );
+		$this->assertTrue( $result );
+
+		// Clean up.
+		$payment_gateway->update_option( 'sandbox_mode', 'no' );
+		unset( $_SERVER['HTTP_X_HOOK0_SIGNATURE'] );
+	}
+
+	/**
+	 * Test webhook uses production secret when sandbox mode is disabled.
+	 */
+	public function test_webhook_uses_production_secret_in_production_mode() {
+		$payment_gateway = WC()->payment_gateways->payment_gateways()['coinbase'];
+
+		$payment_gateway->update_option( 'sandbox_mode', 'no' );
+		$payment_gateway->update_option( 'webhook_secret', 'production_secret' );
+		$payment_gateway->update_option( 'sandbox_webhook_secret', 'sandbox_secret' );
+
+		$payload   = '{"eventType":"payment_link.payment.success","metadata":{"order_id":"1"}}';
+		$timestamp = time();
+		$signature = hash_hmac( 'sha256', $timestamp . '.' . $payload, 'production_secret' );
+
+		$_SERVER['HTTP_X_HOOK0_SIGNATURE'] = 't=' . $timestamp . ',v0=' . $signature;
+
+		include_once dirname( dirname( __DIR__ ) ) . '/includes/class-coinbase-constants.php';
+
+		$result = $payment_gateway->validate_webhook( $payload );
+		$this->assertTrue( $result );
+
+		// Clean up.
+		unset( $_SERVER['HTTP_X_HOOK0_SIGNATURE'] );
+	}
 }

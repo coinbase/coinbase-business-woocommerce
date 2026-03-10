@@ -10,7 +10,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Coinbase_Constants {
 
 	const API_BASE_URL = 'https://business.coinbase.com';
-	const API_PATH     = '/api/v1/payment-links';
+	const API_PATH         = '/api/v1/payment-links';
+	const SANDBOX_API_PATH = '/sandbox/api/v1/payment-links';
 
 	const JWT_ISSUER         = 'cdp';
 	const JWT_EXPIRY_SECONDS = 120;
