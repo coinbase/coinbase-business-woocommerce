@@ -42,6 +42,22 @@ class Coinbase_API_Handler {
 	public static $cdp_private_key;
 
 	/**
+	 * Whether sandbox mode is enabled.
+	 *
+	 * @var bool
+	 */
+	public static $sandbox_mode = false;
+
+	/**
+	 * Get the API path based on sandbox mode.
+	 *
+	 * @return string
+	 */
+	public static function get_api_path() {
+		return self::$sandbox_mode ? Coinbase_Constants::SANDBOX_API_PATH : Coinbase_Constants::API_PATH;
+	}
+
+	/**
 	 * Get the response from an API request.
 	 *
 	 * @param  string $path   API path (e.g., /api/v1/payment-links).
@@ -134,7 +150,7 @@ class Coinbase_API_Handler {
 			$body['description'] = mb_substr( $description, 0, 500 );
 		}
 
-		return self::send_request( Coinbase_Constants::API_PATH, $body, 'POST' );
+		return self::send_request( self::get_api_path(), $body, 'POST' );
 	}
 
 	/**
@@ -144,7 +160,7 @@ class Coinbase_API_Handler {
 	 * @return array  [bool $success, mixed $data]
 	 */
 	public static function get_payment_link( $id ) {
-		$path = Coinbase_Constants::API_PATH . '/' . $id;
+		$path = self::get_api_path() . '/' . $id;
 		return self::send_request( $path );
 	}
 }

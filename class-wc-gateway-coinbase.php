@@ -67,6 +67,10 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
 		add_filter( 'woocommerce_order_data_store_cpt_get_orders_query', array( $this, '_custom_query_var' ), 10, 2 );
 		add_action( 'woocommerce_api_wc_gateway_coinbase', array( $this, 'handle_webhook' ) );
+
+		if ( is_admin() ) {
+			add_action( 'admin_notices', array( $this, 'sandbox_mode_notice' ) );
+		}
 	}
 
 	/**
@@ -115,6 +119,13 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 				'type'    => 'checkbox',
 				'label'   => __( 'Enable Coinbase Business Payment', 'coinbase' ),
 				'default' => 'yes',
+			),
+			'sandbox_mode'    => array(
+				'title'       => __( 'Sandbox Mode', 'coinbase' ),
+				'type'        => 'checkbox',
+				'label'       => __( 'Enable Sandbox (Test) Mode', 'coinbase' ),
+				'default'     => 'no',
+				'description' => __( 'When enabled, payments use the Coinbase sandbox environment. No real funds are transferred.', 'coinbase' ),
 			),
 			'title'           => array(
 				'title'       => __( 'Title', 'woocommerce' ),
@@ -168,6 +179,11 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 
 				__( '3. Copy the webhook secret and paste it into the box above.', 'coinbase' ),
 
+			),
+			'sandbox_webhook_secret' => array(
+				'title'       => __( 'Sandbox Webhook Secret', 'coinbase' ),
+				'type'        => 'text',
+				'description' => __( 'Webhook secret for the sandbox environment. Create a separate webhook subscription with the sandbox label.', 'coinbase' ),
 			),
 			'show_icons'      => array(
 				'title'       => __( 'Show icons', 'coinbase' ),
@@ -380,7 +396,9 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 		}
 
 		$signature_header = $headers[ Coinbase_Constants::SIGNATURE_HEADER ];
-		$secret           = $this->get_option( 'webhook_secret' );
+		$secret           = 'yes' === $this->get_option( 'sandbox_mode' )
+			? $this->get_option( 'sandbox_webhook_secret' )
+			: $this->get_option( 'webhook_secret' );
 
 		// Parse the signature header (format: t=timestamp,v0=sig,h=headers,v1=sig)
 		$parts = array();
@@ -418,6 +436,21 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 	}
 
 	/**
+	 * Display admin notice when sandbox mode is active.
+	 */
+	public function sandbox_mode_notice() {
+		if ( 'yes' !== $this->get_option( 'sandbox_mode' ) ) {
+			return;
+		}
+		echo '<div class="notice notice-warning"><p>';
+		printf(
+			__( '<strong>Coinbase Business:</strong> Sandbox mode is active. No real funds will be transferred. <a href="%s">Disable sandbox mode</a> when ready to accept live payments.', 'coinbase' ),
+			esc_url( admin_url( 'admin.php?page=wc-settings&tab=checkout&section=coinbase' ) )
+		);
+		echo '</p></div>';
+	}
+
+	/**
 	 * Init the API class and set credentials.
 	 */
 	protected function init_api() {
@@ -428,6 +461,7 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 		Coinbase_API_Handler::$log             = get_class( $this ) . '::log';
 		Coinbase_API_Handler::$cdp_key_name    = $this->get_option( 'cdp_key_name' );
 		Coinbase_API_Handler::$cdp_private_key = $this->get_option( 'cdp_private_key' );
+		Coinbase_API_Handler::$sandbox_mode    = 'yes' === $this->get_option( 'sandbox_mode' );
 	}
 
 	/**
