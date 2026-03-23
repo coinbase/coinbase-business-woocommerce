@@ -5,7 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Sends API requests to Coinbase Business Payment Links API.
+ * Sends API requests to Coinbase Business Checkouts API.
  */
 class Coinbase_API_Handler {
 
@@ -60,7 +60,7 @@ class Coinbase_API_Handler {
 	/**
 	 * Get the response from an API request.
 	 *
-	 * @param  string $path   API path (e.g., /api/v1/payment-links).
+	 * @param  string $path   API path (e.g., /api/v1/checkouts).
 	 * @param  array  $params Request body parameters.
 	 * @param  string $method HTTP method.
 	 * @return array  [bool $success, mixed $data]
@@ -108,7 +108,14 @@ class Coinbase_API_Handler {
 			return array( true, $result );
 		}
 
-		$e      = is_array( $result ) && ! empty( $result['error']['message'] ) ? $result['error']['message'] : '(non-JSON or empty body)';
+		// Try new error format first, fall back to old.
+		if ( is_array( $result ) && ! empty( $result['errorMessage'] ) ) {
+			$e = $result['errorMessage'];
+		} elseif ( is_array( $result ) && ! empty( $result['error']['message'] ) ) {
+			$e = $result['error']['message'];
+		} else {
+			$e = '(non-JSON or empty body)';
+		}
 		$errors = array(
 			400 => 'Error response from API: ' . $e,
 			401 => 'Authentication error, please check your CDP API key and private key.',
@@ -127,7 +134,7 @@ class Coinbase_API_Handler {
 	}
 
 	/**
-	 * Create a new payment link.
+	 * Create a new checkout.
 	 *
 	 * @param  string $amount      Payment amount in USD.
 	 * @param  array  $metadata    Order metadata.
@@ -136,7 +143,7 @@ class Coinbase_API_Handler {
 	 * @param  string $description Optional description (max 500 chars).
 	 * @return array  [bool $success, mixed $data]
 	 */
-	public static function create_payment_link( $amount, $metadata, $success_url, $fail_url, $description = null ) {
+	public static function create_checkout( $amount, $metadata, $success_url, $fail_url, $description = null ) {
 		$body = array(
 			'amount'             => (string) $amount,
 			'currency'           => Coinbase_Constants::PAYMENT_CURRENCY,
@@ -154,12 +161,12 @@ class Coinbase_API_Handler {
 	}
 
 	/**
-	 * Retrieve a payment link by ID.
+	 * Retrieve a checkout by ID.
 	 *
-	 * @param  string $id Payment link ID.
+	 * @param  string $id Checkout ID.
 	 * @return array  [bool $success, mixed $data]
 	 */
-	public static function get_payment_link( $id ) {
+	public static function get_checkout( $id ) {
 		$path = self::get_api_path() . '/' . $id;
 		return self::send_request( $path );
 	}

@@ -101,15 +101,15 @@ class WC_Coinbase_Test extends WP_UnitTestCase {
 		// Set store currency to USD for the test.
 		update_option( 'woocommerce_currency', 'USD' );
 
-		add_filter( 'pre_http_request', array( $this, 'pre_http_request_payment_link_success' ) );
+		add_filter( 'pre_http_request', array( $this, 'pre_http_request_checkout_success' ) );
 		$result = $payment_gateway->process_payment( $this->order->get_id() );
-		remove_filter( 'pre_http_request', array( $this, 'pre_http_request_payment_link_success' ) );
+		remove_filter( 'pre_http_request', array( $this, 'pre_http_request_checkout_success' ) );
 
 		$this->assertSame( 'success', $result['result'] );
 
 		// Verify the new meta key is stored.
 		$order = wc_get_order( $this->order->get_id() );
-		$this->assertNotEmpty( $order->get_meta( '_coinbase_payment_link_id' ) );
+		$this->assertNotEmpty( $order->get_meta( '_coinbase_checkout_id' ) );
 
 		// Remove order and created products.
 		WC_Helper_Order::delete_order( $this->order->get_id() );
@@ -156,7 +156,7 @@ class WC_Coinbase_Test extends WP_UnitTestCase {
 		// Set a known webhook secret.
 		$payment_gateway->update_option( 'webhook_secret', 'test_secret_123' );
 
-		$payload   = '{"eventType":"payment_link.payment.success","metadata":{"order_id":"1"}}';
+		$payload   = '{"eventType":"checkout.payment.success","metadata":{"order_id":"1"}}';
 		$timestamp = time();
 		$signature = hash_hmac( 'sha256', $timestamp . '.' . $payload, 'test_secret_123' );
 
@@ -185,7 +185,7 @@ class WC_Coinbase_Test extends WP_UnitTestCase {
 		$payment_gateway = WC()->payment_gateways->payment_gateways()['coinbase'];
 		$payment_gateway->update_option( 'webhook_secret', 'test_secret_123' );
 
-		$payload   = '{"eventType":"payment_link.payment.success","metadata":{"order_id":"1"}}';
+		$payload   = '{"eventType":"checkout.payment.success","metadata":{"order_id":"1"}}';
 		$timestamp = time() - 400; // >300s old.
 		$signature = hash_hmac( 'sha256', $timestamp . '.' . $payload, 'test_secret_123' );
 
@@ -206,7 +206,7 @@ class WC_Coinbase_Test extends WP_UnitTestCase {
 		$payment_gateway = WC()->payment_gateways->payment_gateways()['coinbase'];
 		$payment_gateway->update_option( 'webhook_secret', 'test_secret_123' );
 
-		$payload = '{"eventType":"payment_link.payment.success","metadata":{"order_id":"1"}}';
+		$payload = '{"eventType":"checkout.payment.success","metadata":{"order_id":"1"}}';
 
 		include_once dirname( dirname( __DIR__ ) ) . '/includes/class-coinbase-constants.php';
 
@@ -224,9 +224,9 @@ class WC_Coinbase_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Test get_payment_link returns success on 200 response.
+	 * Test get_checkout returns success on 200 response.
 	 */
-	public function test_get_payment_link_success() {
+	public function test_get_checkout_success() {
 		$payment_gateway = WC()->payment_gateways->payment_gateways()['coinbase'];
 
 		// Init the API so the handler class is loaded.
@@ -234,35 +234,35 @@ class WC_Coinbase_Test extends WP_UnitTestCase {
 		$init_api->setAccessible( true );
 		$init_api->invoke( $payment_gateway );
 
-		add_filter( 'pre_http_request', array( $this, 'pre_http_request_get_payment_link_success' ) );
-		$result = Coinbase_API_Handler::get_payment_link( 'pl_ABC123' );
-		remove_filter( 'pre_http_request', array( $this, 'pre_http_request_get_payment_link_success' ) );
+		add_filter( 'pre_http_request', array( $this, 'pre_http_request_get_checkout_success' ) );
+		$result = Coinbase_API_Handler::get_checkout( 'pl_ABC123' );
+		remove_filter( 'pre_http_request', array( $this, 'pre_http_request_get_checkout_success' ) );
 
 		$this->assertTrue( $result[0] );
 		$this->assertSame( 'pl_ABC123', $result[1]['id'] );
 	}
 
 	/**
-	 * Test get_payment_link returns failure on error response.
+	 * Test get_checkout returns failure on error response.
 	 */
-	public function test_get_payment_link_failure() {
+	public function test_get_checkout_failure() {
 		$payment_gateway = WC()->payment_gateways->payment_gateways()['coinbase'];
 
 		$init_api = new ReflectionMethod( $payment_gateway, 'init_api' );
 		$init_api->setAccessible( true );
 		$init_api->invoke( $payment_gateway );
 
-		add_filter( 'pre_http_request', array( $this, 'pre_http_request_get_payment_link_failure' ) );
-		$result = Coinbase_API_Handler::get_payment_link( 'pl_INVALID' );
-		remove_filter( 'pre_http_request', array( $this, 'pre_http_request_get_payment_link_failure' ) );
+		add_filter( 'pre_http_request', array( $this, 'pre_http_request_get_checkout_failure' ) );
+		$result = Coinbase_API_Handler::get_checkout( 'pl_INVALID' );
+		remove_filter( 'pre_http_request', array( $this, 'pre_http_request_get_checkout_failure' ) );
 
 		$this->assertFalse( $result[0] );
 	}
 
 	/**
-	 * Return successful result for payment link creation.
+	 * Return successful result for checkout creation.
 	 */
-	public function pre_http_request_payment_link_success() {
+	public function pre_http_request_checkout_success() {
 		return array(
 			'response' => array( 'code' => 201 ),
 			'body'     => wp_json_encode( array(
@@ -273,27 +273,27 @@ class WC_Coinbase_Test extends WP_UnitTestCase {
 	}
 
 	/**
-	 * Return successful result for get_payment_link.
+	 * Return successful result for get_checkout.
 	 */
-	public function pre_http_request_get_payment_link_success() {
+	public function pre_http_request_get_checkout_success() {
 		return array(
 			'response' => array( 'code' => 200 ),
 			'body'     => wp_json_encode( array(
-				'id'        => 'pl_ABC123',
-				'url'       => 'https://business.coinbase.com/pay/test',
-				'eventType' => 'payment_link.payment.success',
+				'id'     => 'pl_ABC123',
+				'url'    => 'https://business.coinbase.com/pay/test',
+				'status' => 'COMPLETED',
 			) ),
 		);
 	}
 
 	/**
-	 * Return error result for get_payment_link.
+	 * Return error result for get_checkout with new error format.
 	 */
-	public function pre_http_request_get_payment_link_failure() {
+	public function pre_http_request_get_checkout_failure() {
 		return array(
 			'response' => array( 'code' => 400 ),
 			'body'     => wp_json_encode( array(
-				'error' => array( 'message' => 'Payment link not found' ),
+				'errorMessage' => 'Checkout not found',
 			) ),
 		);
 	}
@@ -309,7 +309,7 @@ class WC_Coinbase_Test extends WP_UnitTestCase {
 		$init_api->invoke( $payment_gateway );
 
 		Coinbase_API_Handler::$sandbox_mode = true;
-		$this->assertSame( '/sandbox/api/v1/payment-links', Coinbase_API_Handler::get_api_path() );
+		$this->assertSame( '/sandbox/api/v1/checkouts', Coinbase_API_Handler::get_api_path() );
 
 		// Clean up.
 		Coinbase_API_Handler::$sandbox_mode = false;
@@ -326,7 +326,7 @@ class WC_Coinbase_Test extends WP_UnitTestCase {
 		$init_api->invoke( $payment_gateway );
 
 		Coinbase_API_Handler::$sandbox_mode = false;
-		$this->assertSame( '/api/v1/payment-links', Coinbase_API_Handler::get_api_path() );
+		$this->assertSame( '/api/v1/checkouts', Coinbase_API_Handler::get_api_path() );
 	}
 
 	/**
@@ -339,7 +339,7 @@ class WC_Coinbase_Test extends WP_UnitTestCase {
 		$payment_gateway->update_option( 'webhook_secret', 'production_secret' );
 		$payment_gateway->update_option( 'sandbox_webhook_secret', 'sandbox_secret' );
 
-		$payload   = '{"eventType":"payment_link.payment.success","metadata":{"order_id":"1"}}';
+		$payload   = '{"eventType":"checkout.payment.success","metadata":{"order_id":"1"}}';
 		$timestamp = time();
 		$signature = hash_hmac( 'sha256', $timestamp . '.' . $payload, 'sandbox_secret' );
 
@@ -365,7 +365,7 @@ class WC_Coinbase_Test extends WP_UnitTestCase {
 		$payment_gateway->update_option( 'webhook_secret', 'production_secret' );
 		$payment_gateway->update_option( 'sandbox_webhook_secret', 'sandbox_secret' );
 
-		$payload   = '{"eventType":"payment_link.payment.success","metadata":{"order_id":"1"}}';
+		$payload   = '{"eventType":"checkout.payment.success","metadata":{"order_id":"1"}}';
 		$timestamp = time();
 		$signature = hash_hmac( 'sha256', $timestamp . '.' . $payload, 'production_secret' );
 
@@ -378,5 +378,38 @@ class WC_Coinbase_Test extends WP_UnitTestCase {
 
 		// Clean up.
 		unset( $_SERVER['HTTP_X_HOOK0_SIGNATURE'] );
+	}
+
+	/**
+	 * Test that legacy payment_link.* webhook events are normalized to checkout.* events.
+	 */
+	public function test_legacy_webhook_event_normalization() {
+		include_once dirname( dirname( __DIR__ ) ) . '/includes/class-coinbase-constants.php';
+
+		// Legacy events should be normalized.
+		$this->assertSame( 'checkout.payment.success', Coinbase_Constants::normalize_event_type( 'payment_link.payment.success' ) );
+		$this->assertSame( 'checkout.payment.failed', Coinbase_Constants::normalize_event_type( 'payment_link.payment.failed' ) );
+		$this->assertSame( 'checkout.payment.expired', Coinbase_Constants::normalize_event_type( 'payment_link.payment.expired' ) );
+
+		// New events should pass through unchanged.
+		$this->assertSame( 'checkout.payment.success', Coinbase_Constants::normalize_event_type( 'checkout.payment.success' ) );
+		$this->assertSame( 'checkout.payment.failed', Coinbase_Constants::normalize_event_type( 'checkout.payment.failed' ) );
+		$this->assertSame( 'checkout.payment.expired', Coinbase_Constants::normalize_event_type( 'checkout.payment.expired' ) );
+	}
+
+	/**
+	 * Test that GET response statuses are correctly mapped to event types.
+	 */
+	public function test_status_to_event_type_mapping() {
+		include_once dirname( dirname( __DIR__ ) ) . '/includes/class-coinbase-constants.php';
+
+		// Terminal statuses should map to event types.
+		$this->assertSame( 'checkout.payment.success', Coinbase_Constants::status_to_event_type( 'COMPLETED' ) );
+		$this->assertSame( 'checkout.payment.failed', Coinbase_Constants::status_to_event_type( 'FAILED' ) );
+		$this->assertSame( 'checkout.payment.expired', Coinbase_Constants::status_to_event_type( 'EXPIRED' ) );
+
+		// Non-terminal statuses should return null.
+		$this->assertNull( Coinbase_Constants::status_to_event_type( 'ACTIVE' ) );
+		$this->assertNull( Coinbase_Constants::status_to_event_type( 'PROCESSING' ) );
 	}
 }
