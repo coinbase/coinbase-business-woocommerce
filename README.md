@@ -85,9 +85,17 @@ This project is licensed under the Apache 2.0 License
 
 ## Changelog
 
+## 2.1.0
+
+- Migrated from Payment Links API to Checkouts API
+- Updated API endpoints from /api/v1/payment-links to /api/v1/checkouts
+- Updated webhook events from payment_link.* to checkout.*
+- Added backward compatibility for existing orders and legacy webhook events
+- Updated error response handling for new API format
+
 ## 2.0.0
 
-- Migrated from Coinbase Commerce Charge API to Coinbase Business Checkouts API
+- Migrated from Coinbase Commerce Charge API to Coinbase Business Payment Links API
 - Authentication changed from API key to ES256 JWT (CDP API credentials)
 - Payment method changed to USDC only
 - Store currency must be USD

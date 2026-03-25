@@ -67,6 +67,6 @@
             "install-path": "../firebase/php-jwt"
         }
     ],
-    "dev": false,
+    "dev": true,
     "dev-package-names": []
 }
