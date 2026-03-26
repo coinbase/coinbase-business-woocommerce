@@ -5,12 +5,12 @@ Tags: coinbase, woocommerce, usdc, base, crypto
 Requires at least: 3.0
 Requires PHP: 8.1+
 Tested up to: 6.5.3
-Stable tag: 2.0.0
+Stable tag: 2.1.0
 License: GPLv2 or later
 
 == Description ==
 
-Accept USDC payments through Coinbase Business Payment Links API on your WooCommerce store.
+Accept USDC payments through Coinbase Business Checkouts API on your WooCommerce store.
 
 **Note: This plugin requires your WooCommerce store currency to be set to USD.**
 
@@ -67,7 +67,7 @@ Your webhook secret from the Coinbase Business dashboard.
 
 Using webhooks allows Coinbase Business to send payment confirmation messages to the website. To fill this out:
 
-Follow the instructions at https://docs.cdp.coinbase.com/coinbase-business/payment-link-apis/webhooks to set up webhooks.
+Follow the instructions at https://docs.cdp.coinbase.com/coinbase-business/checkout-apis/webhooks to set up webhooks.
 
 = Debug log =
 
@@ -80,7 +80,7 @@ If this is checked, these are saved within your `wp-content/uploads/wc-logs/` fo
 
 = What payment method does this plugin support?
 
-This plugin supports USDC payments via Coinbase Business Payment Links.
+This plugin supports USDC payments via Coinbase Business Checkouts.
 
 = What currency must my store use?
 
@@ -97,6 +97,9 @@ To use this plugin with your WooCommerce store you will need:
 
 == Upgrade Notice ==
 
+= 2.1.0 =
+Migrates from Payment Links API to Checkouts API. No configuration changes required.
+
 = 2.0.0 =
 Major upgrade: migrates from Coinbase Commerce (Charge API) to Coinbase Business (Payment Links API). Requires new CDP API credentials from coinbase.com/business. Store currency must be USD. USDC only.
 
@@ -109,6 +112,13 @@ Major upgrade: migrates from Coinbase Commerce (Charge API) to Coinbase Business
 
 
 == Changelog ==
+
+= 2.1.0 =
+* Migrated from Payment Links API to Checkouts API
+* Updated API endpoints from /api/v1/payment-links to /api/v1/checkouts
+* Updated webhook events from payment_link.* to checkout.*
+* Added backward compatibility for existing orders and legacy webhook events
+* Updated error response handling for new API format
 
 = 2.0.0 =
 * Migrated from Coinbase Commerce Charge API to Coinbase Business Payment Links API

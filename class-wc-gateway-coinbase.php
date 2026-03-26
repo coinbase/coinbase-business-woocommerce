@@ -2,7 +2,7 @@
 /**
  * Coinbase Business Payment Gateway.
  *
- * Provides a Coinbase Business Payment Gateway using Payment Links API.
+ * Provides a Coinbase Business Payment Gateway using Checkouts API.
  *
  * @class       WC_Gateway_Coinbase
  * @extends     WC_Payment_Gateway
@@ -169,7 +169,7 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 
 				. '<br /><br />' .
 
-				__( '1. Follow the instructions at https://docs.cdp.coinbase.com/coinbase-business/payment-link-apis/webhooks to set up webhooks.', 'coinbase' )
+				__( '1. Follow the instructions at https://docs.cdp.coinbase.com/coinbase-business/checkout-apis/webhooks to set up webhooks.', 'coinbase' )
 
 				. '<br />' .
 
@@ -236,7 +236,7 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 			'source'    => 'woocommerce',
 		);
 
-		$result = Coinbase_API_Handler::create_payment_link(
+		$result = Coinbase_API_Handler::create_checkout(
 			$order->get_total(),
 			$metadata,
 			$this->get_return_url( $order ),
@@ -245,20 +245,20 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 		);
 
 		if ( ! $result[0] ) {
-			self::log( 'create_payment_link failed: ' . $result[1], 'error' );
-			wc_add_notice( __( 'Unable to create payment link. Please try again or contact support.', 'coinbase' ), 'error' );
+			self::log( 'create_checkout failed: ' . $result[1], 'error' );
+			wc_add_notice( __( 'Unable to create checkout. Please try again or contact support.', 'coinbase' ), 'error' );
 			return array( 'result' => 'fail' );
 		}
 
-		$payment_link = $result[1];
+		$checkout = $result[1];
 
-		$order->update_meta_data( '_coinbase_payment_link_id', $payment_link['id'] );
-		$order->update_meta_data( '_coinbase_payment_link_url', $payment_link['url'] );
+		$order->update_meta_data( '_coinbase_checkout_id', $checkout['id'] );
+		$order->update_meta_data( '_coinbase_checkout_url', $checkout['url'] );
 		$order->save();
 
 		return array(
 			'result'   => 'success',
-			'redirect' => $payment_link['url'],
+			'redirect' => $checkout['url'],
 		);
 	}
 
@@ -299,18 +299,28 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 						'compare' => 'NOT EXISTS',
 					),
 					array(
-						'key'     => '_coinbase_payment_link_id',
-						'compare' => 'EXISTS',
+						'relation' => 'OR',
+						array(
+							'key'     => '_coinbase_checkout_id',
+							'compare' => 'EXISTS',
+						),
+						array(
+							'key'     => '_coinbase_payment_link_id',
+							'compare' => 'EXISTS',
+						),
 					),
 				),
 			)
 		);
 
 		foreach ( $orders as $order ) {
-			$payment_link_id = $order->get_meta( '_coinbase_payment_link_id' );
+			$checkout_id = $order->get_meta( '_coinbase_checkout_id' );
+			if ( empty( $checkout_id ) ) {
+				$checkout_id = $order->get_meta( '_coinbase_payment_link_id' );
+			}
 
 			usleep( 300000 );  // Ensure we don't hit the rate limit.
-			$result = Coinbase_API_Handler::get_payment_link( $payment_link_id );
+			$result = Coinbase_API_Handler::get_checkout( $checkout_id );
 
 			if ( ! $result[0] ) {
 				self::log( 'Failed to fetch order updates for: ' . $order->get_id() );
@@ -319,8 +329,8 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 
 			$data = $result[1];
 
-			// Map payment link status to event type for _update_order_status().
-			$event_type = isset( $data['eventType'] ) ? $data['eventType'] : null;
+			// Map checkout status to event type for _update_order_status().
+			$event_type = isset( $data['status'] ) ? Coinbase_Constants::status_to_event_type( $data['status'] ) : null;
 			if ( $event_type ) {
 				$this->_update_order_status( $order, $event_type, $data );
 			}
@@ -339,8 +349,9 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 
 			self::log( 'Webhook received event: ' . print_r( $data, true ) );
 
-			$event_type = isset( $data['eventType'] ) ? $data['eventType'] : null;
-			$metadata   = isset( $data['metadata'] ) ? $data['metadata'] : array();
+			$raw_event_type = isset( $data['eventType'] ) ? $data['eventType'] : null;
+			$event_type     = $raw_event_type ? Coinbase_Constants::normalize_event_type( $raw_event_type ) : null;
+			$metadata       = isset( $data['metadata'] ) ? $data['metadata'] : array();
 
 			// Validate this is a WooCommerce payment.
 			if ( ! isset( $metadata['source'] ) || $metadata['source'] !== 'woocommerce' ) {
@@ -465,10 +476,10 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 	}
 
 	/**
-	 * Update the status of an order from a payment link event.
+	 * Update the status of an order from a checkout event.
 	 *
 	 * @param  WC_Order $order      WooCommerce order.
-	 * @param  string   $event_type Payment link event type.
+	 * @param  string   $event_type Checkout event type.
 	 * @param  array    $data       Full event data.
 	 */
 	public function _update_order_status( $order, $event_type, $data = array() ) {
@@ -505,7 +516,8 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 
 	/**
 	 * Handle a custom 'coinbase_archived' query var to get orders
-	 * paid through Coinbase with the '_coinbase_payment_link_id' meta.
+	 * paid through Coinbase with the '_coinbase_checkout_id' or
+	 * '_coinbase_payment_link_id' meta.
 	 *
 	 * @param array $query - Args for WP_Query.
 	 * @param array $query_vars - Query vars from WC_Order_Query.
@@ -518,8 +530,15 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 				'compare' => $query_vars['coinbase_archived'] ? 'EXISTS' : 'NOT EXISTS',
 			);
 			$query['meta_query'][] = array(
-				'key'     => '_coinbase_payment_link_id',
-				'compare' => 'EXISTS',
+				'relation' => 'OR',
+				array(
+					'key'     => '_coinbase_checkout_id',
+					'compare' => 'EXISTS',
+				),
+				array(
+					'key'     => '_coinbase_payment_link_id',
+					'compare' => 'EXISTS',
+				),
 			);
 		}
 

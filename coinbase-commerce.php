@@ -2,8 +2,8 @@
 /*
 Plugin Name:  Coinbase Business
 Plugin URI:   https://github.com/coinbase/coinbase-commerce-woocommerce/
-Description:  A payment gateway that allows your customers to pay with USDC via Coinbase Business Payment Links API (https://coinbase.com/business)
-Version:      2.0.0
+Description:  A payment gateway that allows your customers to pay with USDC via Coinbase Business Checkouts API (https://coinbase.com/business)
+Version:      2.1.0
 Author:       Coinbase Business
 Author URI:   https://coinbase.com/business
 License:      GPLv3+
@@ -133,7 +133,7 @@ function cb_wc_add_status( $wc_statuses_arr ) {
 
 /**
  * Add order Coinbase meta after General and before Billing.
- * Shows either payment link ID (new) or charge ID (legacy), whichever exists.
+ * Shows checkout ID (new), payment link ID (previous), or charge ID (legacy), whichever exists.
  *
  * @see: https://rudrastyh.com/woocommerce/customize-order-details.html
  *
@@ -141,9 +141,10 @@ function cb_wc_add_status( $wc_statuses_arr ) {
  */
 function cb_order_meta_general( $order ) {
 	if ($order->get_payment_method() == 'coinbase') {
+		$checkout_id     = $order->get_meta( '_coinbase_checkout_id' );
 		$payment_link_id = $order->get_meta( '_coinbase_payment_link_id' );
 		$charge_id       = $order->get_meta( '_coinbase_charge_id' );
-		$reference       = $payment_link_id ? $payment_link_id : $charge_id;
+		$reference       = $checkout_id ? $checkout_id : ( $payment_link_id ? $payment_link_id : $charge_id );
 
 		if ( $reference ) {
 			?>
@@ -162,7 +163,7 @@ function cb_order_meta_general( $order ) {
 
 /**
  * Add Coinbase meta to WC emails.
- * Prefers new payment link ID, falls back to legacy charge ID.
+ * Prefers checkout ID, falls back to payment link ID, then legacy charge ID.
  *
  * @see https://docs.woocommerce.com/document/add-a-custom-field-in-an-order-to-the-emails/
  *
@@ -173,9 +174,10 @@ function cb_order_meta_general( $order ) {
  */
 function cb_custom_woocommerce_email_order_meta_fields( $fields, $sent_to_admin, $order ) {
 	if ($order->get_payment_method() == 'coinbase') {
+		$checkout_id     = $order->get_meta( '_coinbase_checkout_id' );
 		$payment_link_id = $order->get_meta( '_coinbase_payment_link_id' );
 		$charge_id       = $order->get_meta( '_coinbase_charge_id' );
-		$reference       = $payment_link_id ? $payment_link_id : $charge_id;
+		$reference       = $checkout_id ? $checkout_id : ( $payment_link_id ? $payment_link_id : $charge_id );
 
 		if ( $reference ) {
 			$fields['coinbase_reference'] = array(

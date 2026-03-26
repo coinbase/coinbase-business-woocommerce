@@ -11,7 +11,7 @@ use Firebase\JWT\JWT;
 /**
  * JWT Authentication for Coinbase CDP API.
  *
- * Generates ES256-signed JWTs for authenticating with the Payment Links API.
+ * Generates ES256-signed JWTs for authenticating with the Checkouts API.
  */
 class Coinbase_JWT_Auth {
 
@@ -38,7 +38,7 @@ class Coinbase_JWT_Auth {
 	 * Generate a JWT token for API authentication.
 	 *
 	 * @param string $method HTTP method (GET, POST, etc.).
-	 * @param string $path   API path (e.g., /api/v1/payment-links).
+	 * @param string $path   API path (e.g., /api/v1/checkouts).
 	 * @return string Signed JWT token.
 	 * @throws Exception If private key is invalid.
 	 */
