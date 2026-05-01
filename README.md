@@ -52,7 +52,7 @@ Your webhook secret from the [Coinbase Business dashboard].
 
 Using webhooks allows Coinbase Business to send payment confirmation messages to the website. To fill this out:
 
-Follow the instructions at https://docs.cdp.coinbase.com/coinbase-business/checkout-apis/webhooks to set up webhooks.
+Follow the instructions at https://docs.cdp.coinbase.com/coinbase-business/checkout-apis/webhooks to set up webhooks. Note that the url for your store would be `https://[your-store-website.com]/?wc-api=WC_Gateway_Coinbase`
 
 ### Debug log
 
