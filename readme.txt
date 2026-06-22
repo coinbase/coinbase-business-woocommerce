@@ -59,7 +59,7 @@ Your CDP API key name from the Coinbase Business dashboard at https://coinbase.c
 
 = CDP API Private Key =
 
-Your EC private key in PEM format. Paste the full key including BEGIN/END lines.
+Your ECDSA private key in PEM format. Paste the full key including BEGIN/END lines.
 
 = Webhook Secret =
 
