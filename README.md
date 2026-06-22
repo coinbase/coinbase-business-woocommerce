@@ -40,15 +40,15 @@ Description of the payment method on the checkout page
 
 ### CDP API Key Name
 
-Your CDP API key name from the [Coinbase Business dashboard].
+Your CDP API key name from the [Coinbase Business Account API settings].
 
 ### CDP API Private Key
 
-Your EC private key in PEM format. Paste the full key including BEGIN/END lines.
+Your ECDSA private key in PEM format. Paste the full key including BEGIN/END lines.
 
 ### Webhook Secret
 
-Your webhook secret from the [Coinbase Business dashboard].
+Your webhook secret from the [Coinbase Business Account API settings].
 
 Using webhooks allows Coinbase Business to send payment confirmation messages to the website. To fill this out:
 
@@ -153,7 +153,7 @@ This project is licensed under the Apache 2.0 License
 
 [//]: # "Comments for storing reference material in. Stripped out when processing the markdown"
 [Coinbase Business]: https://coinbase.com/business
-[Coinbase Business dashboard]: https://coinbase.com/business
+[Coinbase Business Account API settings]: https://www.coinbase.com/settings/api
 [WooCommerce]: https://woocommerce.com/
 [WordPress]: https://wordpress.org/
 [WordPress.org plugin repository]: https://wordpress.org/plugins/coinbase-commerce/

@@ -157,7 +157,7 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 				'title'       => __( 'CDP API Private Key', 'coinbase' ),
 				'type'        => 'textarea',
 				'default'     => '',
-				'description' => __( 'Your EC private key in PEM format. Paste the full key including BEGIN/END lines.', 'coinbase' ),
+				'description' => __( 'Your ECDSA private key in PEM format. Paste the full key including BEGIN/END lines.', 'coinbase' ),
 				'css'         => 'font-family: monospace; height: 150px;',
 			),
 			'webhook_secret'  => array(

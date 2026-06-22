@@ -21,13 +21,13 @@ class Coinbase_JWT_Auth {
 	private $key_name;
 
 	/**
-	 * @var string EC private key in PEM format.
+	 * @var string ECDSA private key in PEM format.
 	 */
 	private $private_key;
 
 	/**
 	 * @param string $key_name       CDP API key name.
-	 * @param string $private_key_pem EC private key in PEM format.
+	 * @param string $private_key_pem ECDSA private key in PEM format.
 	 */
 	public function __construct( $key_name, $private_key_pem ) {
 		$this->key_name    = $key_name;
