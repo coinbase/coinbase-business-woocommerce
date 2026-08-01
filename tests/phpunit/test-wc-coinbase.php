@@ -179,6 +179,104 @@ class WC_Coinbase_Test extends WP_UnitTestCase {
 	}
 
 	/**
+	 * Test that an empty webhook secret always fails closed.
+	 */
+	public function test_webhook_signature_rejects_empty_secret() {
+		$payment_gateway = WC()->payment_gateways->payment_gateways()['coinbase'];
+		$payment_gateway->update_option( 'sandbox_mode', 'no' );
+		$payment_gateway->update_option( 'webhook_secret', '' );
+
+		$payload   = '{"eventType":"checkout.payment.success","metadata":{"order_id":"1"}}';
+		$timestamp = time();
+		$signature = hash_hmac( 'sha256', $timestamp . '.' . $payload, '' );
+
+		$_SERVER['HTTP_X_HOOK0_SIGNATURE'] = 't=' . $timestamp . ',v0=' . $signature;
+
+		include_once dirname( dirname( __DIR__ ) ) . '/includes/class-coinbase-constants.php';
+
+		$this->assertFalse( $payment_gateway->validate_webhook( $payload ) );
+
+		// Clean up.
+		$payment_gateway->update_option( 'webhook_secret', 'test_secret_123' );
+		unset( $_SERVER['HTTP_X_HOOK0_SIGNATURE'] );
+	}
+
+	/**
+	 * Test that webhooks are bound to the order key, gateway, and checkout ID.
+	 */
+	public function test_webhook_only_updates_matching_coinbase_order() {
+		include_once dirname( dirname( __DIR__ ) ) . '/includes/class-coinbase-constants.php';
+
+		$payment_gateway = WC()->payment_gateways->payment_gateways()['coinbase'];
+		$payment_gateway->update_option( 'sandbox_mode', 'no' );
+		$payment_gateway->update_option( 'webhook_secret', 'test_secret_123' );
+
+		$order = WC_Helper_Order::create_order();
+		$order->set_payment_method( $payment_gateway );
+		$order->update_meta_data( '_coinbase_checkout_id', 'checkout_ABC123' );
+		$order->save();
+
+		$webhook = array(
+			'id'        => 'checkout_ABC123',
+			'url'       => 'https://business.coinbase.com/pay/checkout_ABC123',
+			'eventType' => 'checkout.payment.success',
+			'metadata'  => array(
+				'source'    => 'woocommerce',
+				'order_id'  => (string) $order->get_id(),
+				'order_key' => $order->get_order_key(),
+			),
+		);
+
+		// The order key is mandatory.
+		$missing_order_key = $webhook;
+		unset( $missing_order_key['metadata']['order_key'] );
+		$payload = wp_json_encode( $missing_order_key );
+		$this->set_webhook_signature( $payload, 'test_secret_123' );
+		$this->assertFalse( $payment_gateway->process_webhook( $payload ) );
+		$this->assertSame( 'pending', wc_get_order( $order->get_id() )->get_status() );
+
+		// The webhook checkout ID must match the checkout stored on the order.
+		$mismatched_checkout       = $webhook;
+		$mismatched_checkout['id'] = 'checkout_DIFFERENT';
+		$payload                   = wp_json_encode( $mismatched_checkout );
+		$this->set_webhook_signature( $payload, 'test_secret_123' );
+		$this->assertFalse( $payment_gateway->process_webhook( $payload ) );
+		$this->assertSame( 'pending', wc_get_order( $order->get_id() )->get_status() );
+
+		// Even matching metadata cannot update an order assigned to another gateway.
+		$order->set_payment_method( 'cod' );
+		$order->save();
+		$payload = wp_json_encode( $webhook );
+		$this->set_webhook_signature( $payload, 'test_secret_123' );
+		$this->assertFalse( $payment_gateway->process_webhook( $payload ) );
+		$this->assertSame( 'pending', wc_get_order( $order->get_id() )->get_status() );
+
+		// A fully matching Coinbase webhook completes the order.
+		$order->set_payment_method( $payment_gateway );
+		$order->save();
+		$this->set_webhook_signature( $payload, 'test_secret_123' );
+		$this->assertTrue( $payment_gateway->process_webhook( $payload ) );
+		$this->assertSame( 'completed', wc_get_order( $order->get_id() )->get_status() );
+
+		// Clean up.
+		unset( $_SERVER['HTTP_X_HOOK0_SIGNATURE'] );
+		WC_Helper_Order::delete_order( $order->get_id() );
+	}
+
+	/**
+	 * Add a valid Coinbase webhook signature header for a payload.
+	 *
+	 * @param string $payload Raw request body.
+	 * @param string $secret  Webhook secret.
+	 */
+	protected function set_webhook_signature( $payload, $secret ) {
+		$timestamp = time();
+		$signature = hash_hmac( 'sha256', $timestamp . '.' . $payload, $secret );
+
+		$_SERVER['HTTP_X_HOOK0_SIGNATURE'] = 't=' . $timestamp . ',v0=' . $signature;
+	}
+
+	/**
 	 * Test that an expired timestamp is rejected by webhook validation.
 	 */
 	public function test_webhook_signature_rejects_expired_timestamp() {
