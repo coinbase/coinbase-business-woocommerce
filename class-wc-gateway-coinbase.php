@@ -70,6 +70,7 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 
 		if ( is_admin() ) {
 			add_action( 'admin_notices', array( $this, 'sandbox_mode_notice' ) );
+			add_action( 'admin_notices', array( $this, 'webhook_secret_notice' ) );
 		}
 	}
 
@@ -163,6 +164,7 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 			'webhook_secret'  => array(
 				'title'       => __( 'Webhook Secret', 'coinbase' ),
 				'type'        => 'text',
+				'default'     => '',
 				'description' =>
 
 				__( 'Using webhooks allows Coinbase Business to send payment confirmation messages to the website. To fill this out:', 'coinbase' )
@@ -183,6 +185,7 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 			'sandbox_webhook_secret' => array(
 				'title'       => __( 'Sandbox Webhook Secret', 'coinbase' ),
 				'type'        => 'text',
+				'default'     => '',
 				'description' => __( 'Webhook secret for the sandbox environment. Create a separate webhook subscription with the sandbox label.', 'coinbase' ),
 			),
 			'show_icons'      => array(
@@ -344,47 +347,102 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 		include_once dirname( __FILE__ ) . '/includes/class-coinbase-constants.php';
 
 		$payload = file_get_contents( 'php://input' );
-		if ( ! empty( $payload ) && $this->validate_webhook( $payload ) ) {
-			$data = json_decode( $payload, true );
-
-			self::log( 'Webhook received event: ' . print_r( $data, true ) );
-
-			$raw_event_type = isset( $data['eventType'] ) ? $data['eventType'] : null;
-			$event_type     = $raw_event_type ? Coinbase_Constants::normalize_event_type( $raw_event_type ) : null;
-			$metadata       = isset( $data['metadata'] ) ? $data['metadata'] : array();
-
-			// Validate this is a WooCommerce payment.
-			if ( ! isset( $metadata['source'] ) || $metadata['source'] !== 'woocommerce' ) {
-				self::log( 'Ignoring webhook: not a WooCommerce payment.' );
-				exit;
-			}
-
-			if ( ! isset( $metadata['order_id'] ) ) {
-				self::log( 'Ignoring webhook: no order_id in metadata.' );
-				exit;
-			}
-
-			$order_id = $metadata['order_id'];
-			$order    = wc_get_order( $order_id );
-
-			if ( ! $order ) {
-				self::log( 'Webhook error: order not found for ID ' . $order_id );
-				exit;
-			}
-
-			// Verify order key if present in metadata.
-			if ( isset( $metadata['order_key'] ) && $order->get_order_key() !== $metadata['order_key'] ) {
-				self::log( 'Webhook error: order key mismatch for order ' . $order_id );
-				exit;
-			}
-
-			$this->_update_order_status( $order, $event_type, $data );
-
-			exit;  // 200 response for acknowledgement.
-		}
+		$this->process_webhook( $payload );
 
 		status_header( 200 );
 		exit;
+	}
+
+	/**
+	 * Validate and process a Coinbase Business webhook payload.
+	 *
+	 * @param  string $payload Raw request body.
+	 * @return bool Whether the webhook updated a matching Coinbase order.
+	 */
+	public function process_webhook( $payload ) {
+		if ( empty( $payload ) || ! $this->validate_webhook( $payload ) ) {
+			return false;
+		}
+
+		$data = json_decode( $payload, true );
+		if ( ! is_array( $data ) ) {
+			self::log( 'Ignoring webhook: invalid JSON payload.' );
+			return false;
+		}
+
+		self::log( 'Webhook received event: ' . print_r( $data, true ) );
+
+		$raw_event_type = isset( $data['eventType'] ) && is_string( $data['eventType'] ) ? $data['eventType'] : null;
+		$event_type     = $raw_event_type ? Coinbase_Constants::normalize_event_type( $raw_event_type ) : null;
+		$metadata       = isset( $data['metadata'] ) && is_array( $data['metadata'] ) ? $data['metadata'] : array();
+
+		// Validate this is a WooCommerce payment.
+		if ( ! isset( $metadata['source'] ) || 'woocommerce' !== $metadata['source'] ) {
+			self::log( 'Ignoring webhook: not a WooCommerce payment.' );
+			return false;
+		}
+
+		if ( ! isset( $metadata['order_id'] ) || ! is_scalar( $metadata['order_id'] ) ) {
+			self::log( 'Ignoring webhook: no valid order_id in metadata.' );
+			return false;
+		}
+
+		$order_id = absint( $metadata['order_id'] );
+		$order    = $order_id ? wc_get_order( $order_id ) : false;
+
+		if ( ! $order ) {
+			self::log( 'Webhook error: order not found for ID ' . $order_id );
+			return false;
+		}
+
+		if ( ! $this->validate_webhook_order( $order, $metadata, $data ) ) {
+			return false;
+		}
+
+		$this->_update_order_status( $order, $event_type, $data );
+		return true;
+	}
+
+	/**
+	 * Ensure a webhook is bound to the Coinbase checkout that created an order.
+	 *
+	 * @param  WC_Order $order    WooCommerce order.
+	 * @param  array    $metadata Webhook metadata.
+	 * @param  array    $data     Full webhook payload.
+	 * @return bool
+	 */
+	protected function validate_webhook_order( $order, $metadata, $data ) {
+		$order_id = $order->get_id();
+
+		if ( $this->id !== $order->get_payment_method() ) {
+			self::log( 'Webhook error: order ' . $order_id . ' was not created with Coinbase.' );
+			return false;
+		}
+
+		if ( ! isset( $metadata['order_key'] ) || ! is_scalar( $metadata['order_key'] ) ) {
+			self::log( 'Webhook error: no order key for order ' . $order_id );
+			return false;
+		}
+
+		$order_key = (string) $metadata['order_key'];
+		if ( ! hash_equals( (string) $order->get_order_key(), $order_key ) ) {
+			self::log( 'Webhook error: order key mismatch for order ' . $order_id );
+			return false;
+		}
+
+		$checkout_id = $order->get_meta( '_coinbase_checkout_id' );
+		if ( empty( $checkout_id ) ) {
+			// Continue to support webhooks for orders made with the Payment Links API.
+			$checkout_id = $order->get_meta( '_coinbase_payment_link_id' );
+		}
+
+		if ( empty( $checkout_id ) || ! isset( $data['id'] ) || ! is_scalar( $data['id'] ) ||
+			! hash_equals( (string) $checkout_id, (string) $data['id'] ) ) {
+			self::log( 'Webhook error: checkout identifier mismatch for order ' . $order_id );
+			return false;
+		}
+
+		return true;
 	}
 
 	/**
@@ -410,6 +468,12 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 		$secret           = 'yes' === $this->get_option( 'sandbox_mode' )
 			? $this->get_option( 'sandbox_webhook_secret' )
 			: $this->get_option( 'webhook_secret' );
+
+		// Never authenticate a webhook with a publicly computable empty HMAC key.
+		if ( empty( $secret ) ) {
+			self::log( 'Webhook validation disabled: no webhook secret is configured.' );
+			return false;
+		}
 
 		// Parse the signature header (format: t=timestamp,v0=sig,h=headers,v1=sig)
 		$parts = array();
@@ -457,6 +521,35 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 		printf(
 			__( '<strong>Coinbase Business:</strong> Sandbox mode is active. No real funds will be transferred. <a href="%s">Disable sandbox mode</a> when ready to accept live payments.', 'coinbase' ),
 			esc_url( admin_url( 'admin.php?page=wc-settings&tab=checkout&section=coinbase' ) )
+		);
+		echo '</p></div>';
+	}
+
+	/**
+	 * Display an admin notice when webhook validation is not configured.
+	 */
+	public function webhook_secret_notice() {
+		if ( 'yes' !== $this->get_option( 'enabled' ) || ! current_user_can( 'manage_woocommerce' ) ) {
+			return;
+		}
+
+		$sandbox_mode = 'yes' === $this->get_option( 'sandbox_mode' );
+		$secret       = $sandbox_mode
+			? $this->get_option( 'sandbox_webhook_secret' )
+			: $this->get_option( 'webhook_secret' );
+
+		if ( ! empty( $secret ) ) {
+			return;
+		}
+
+		$settings_url = admin_url( 'admin.php?page=wc-settings&tab=checkout&section=coinbase' );
+		$secret_name  = $sandbox_mode ? __( 'sandbox webhook secret', 'coinbase' ) : __( 'webhook secret', 'coinbase' );
+
+		echo '<div class="notice notice-error"><p>';
+		printf(
+			__( '<strong>Coinbase Business:</strong> Webhook processing is disabled because no %1$s is configured. <a href="%2$s">Configure the webhook secret</a> to receive payment updates securely.', 'coinbase' ),
+			esc_html( $secret_name ),
+			esc_url( $settings_url )
 		);
 		echo '</p></div>';
 	}

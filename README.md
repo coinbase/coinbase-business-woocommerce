@@ -50,6 +50,8 @@ Your ECDSA private key in PEM format. Paste the full key including BEGIN/END lin
 
 Your webhook secret from the [Coinbase Business Account API settings].
 
+The secret is required before the plugin will process webhook events. If it is not configured, webhook requests are rejected and the hourly payment-status poller remains in use.
+
 Using webhooks allows Coinbase Business to send payment confirmation messages to the website. To fill this out:
 
 Follow the instructions at https://docs.cdp.coinbase.com/coinbase-business/checkout-apis/webhooks to set up webhooks. Note that the url for your store would be `https://[your-store-website.com]/?wc-api=WC_Gateway_Coinbase`
