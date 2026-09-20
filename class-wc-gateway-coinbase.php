@@ -370,11 +370,14 @@ class WC_Gateway_Coinbase extends WC_Payment_Gateway {
 			return false;
 		}
 
-		self::log( 'Webhook received event: ' . print_r( $data, true ) );
-
 		$raw_event_type = isset( $data['eventType'] ) && is_string( $data['eventType'] ) ? $data['eventType'] : null;
 		$event_type     = $raw_event_type ? Coinbase_Constants::normalize_event_type( $raw_event_type ) : null;
 		$metadata       = isset( $data['metadata'] ) && is_array( $data['metadata'] ) ? $data['metadata'] : array();
+
+		// Log only the event type and order reference. The full webhook
+		// payload contains customer PII (email, name) in metadata and must
+		// not be written to log files.
+		self::log( 'Webhook received event: ' . ( $raw_event_type ?? 'unknown' ) . ' for order ' . ( isset( $metadata['order_id'] ) && is_scalar( $metadata['order_id'] ) ? absint( $metadata['order_id'] ) : 'unknown' ) );
 
 		// Validate this is a WooCommerce payment.
 		if ( ! isset( $metadata['source'] ) || 'woocommerce' !== $metadata['source'] ) {
