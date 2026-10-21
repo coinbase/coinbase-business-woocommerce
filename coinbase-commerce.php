@@ -4,6 +4,7 @@ Plugin Name:  Coinbase Business
 Plugin URI:   https://github.com/coinbase/coinbase-commerce-woocommerce/
 Description:  A payment gateway that allows your customers to pay with USDC via Coinbase Business Checkouts API (https://coinbase.com/business)
 Version:      2.1.0
+Requires PHP: 8.2.35
 Author:       Coinbase Business
 Author URI:   https://coinbase.com/business
 License:      GPLv3+

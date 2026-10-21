@@ -68,8 +68,45 @@ To use this plugin with your WooCommerce store you will need:
 
 - [WordPress] (tested up to 6.5.3)
 - [WooCommerce] (tested up to 8.9.1)
-- PHP 8.1 or higher
+- PHP 8.2.35+ on the 8.2 branch, 8.3.36+ on the 8.3 branch, or 8.4.27+ on the 8.4 branch
 - Store currency set to USD
+
+### PHP security upgrade
+
+The PHP version requirements above exclude upstream releases affected by [CVE-2026-109618 and CVE-2026-109619](https://www.php.net/archive/2026.php). PHP 8.1 and older, and PHP 8.5 or newer, are outside this plugin's declared PHP support. The WordPress and WooCommerce versions listed above are existing test coverage; validate your complete store, including checkout and webhooks, on the patched PHP build before deploying.
+
+**Updating this plugin does not patch your server's PHP runtime.** Before installing or updating the plugin, ask your hosting provider to upgrade the PHP build serving WordPress requests (Apache or PHP-FPM), plus any CLI and cron runtimes, to a patched release on one of the supported branches. Restart or replace the affected web workers and long-running processes, then confirm the PHP version/build serving the website. A CLI `php -v` check alone does not verify the web runtime.
+
+Some operating-system and hosting vendors backport security fixes without changing the upstream PHP version number. For such builds, obtain the vendor advisory and exact package/build version confirming both CVE fixes, and review plugin compatibility before deployment. These upstream version requirements cannot identify vendor backports; do not bypass them based only on a package being marked up to date.
+
+Composer installations can run `composer check-platform-reqs --lock` to check the CLI runtime against the complete per-branch requirements. ZIP uploads and copied plugin directories do not perform Composer's installation checks. WordPress's `Requires PHP` metadata and the generated Composer autoload check express only a minimum version, so they do not reject every excluded release on a newer branch. Successful activation is not proof that the host is patched: verify the actual web runtime/build with your hosting provider before using the plugin.
+
+### Local Docker development
+
+The Compose configuration requires `COINBASE_WORDPRESS_IMAGE` and has no default WordPress image. On 2026-10-21, the official `wordpress:php8.2-apache`, `wordpress:php8.3-apache`, and `wordpress:php8.4-apache` image configurations still reported PHP 8.2.34, 8.3.35, and 8.4.26 respectively, below the required security floors. A mutable `php8.x` tag does not establish that an image is patched.
+
+Choose an image containing a supported patched PHP release. Replace the placeholder below with its immutable digest, export the value, then pull it and confirm the resolved digest:
+
+```sh
+export COINBASE_WORDPRESS_IMAGE='wordpress@sha256:<verified-image-digest>'
+docker pull "$COINBASE_WORDPRESS_IMAGE"
+docker image inspect --format '{{json .RepoDigests}}' "$COINBASE_WORDPRESS_IMAGE"
+```
+
+Verify the PHP binary in that exact image before starting the development stack. This command starts Compose only when the runtime falls within one of the declared supported ranges:
+
+```sh
+docker run --rm --entrypoint php "$COINBASE_WORDPRESS_IMAGE" -r '
+$v = PHP_VERSION_ID;
+$supported = ($v >= 80235 && $v < 80300)
+    || ($v >= 80336 && $v < 80400)
+    || ($v >= 80427 && $v < 80500);
+printf("PHP %s: %s\n", PHP_VERSION, $supported ? "supported" : "upgrade required");
+exit($supported ? 0 : 1);
+' && docker compose up -d
+```
+
+Confirm the PHP build serving the WordPress site after startup as well. The development image and these checks do not update merchant hosting environments.
 
 ## Frequently Asked Questions
 
