@@ -3,7 +3,7 @@ Contributors: pragbarrett, eddhurst, omidahourai, robbybarton
 Plugin URL: https://coinbase.com/business
 Tags: coinbase, woocommerce, usdc, base, crypto
 Requires at least: 3.0
-Requires PHP: 8.1+
+Requires PHP: 8.2.35
 Tested up to: 6.5.3
 Stable tag: 2.1.0
 License: GPLv2 or later
@@ -92,8 +92,18 @@ Your WooCommerce store currency must be set to USD.
 
 To use this plugin with your WooCommerce store you will need:
 * WooCommerce plugin
-* PHP 8.1 or higher
+* PHP 8.2.35+ on the 8.2 branch, 8.3.36+ on the 8.3 branch, or 8.4.27+ on the 8.4 branch
 * Store currency set to USD
+
+= PHP security upgrade =
+
+These PHP requirements exclude upstream releases affected by CVE-2026-109618 and CVE-2026-109619 (https://www.php.net/archive/2026.php). PHP 8.1 and older, and PHP 8.5 or newer, are outside this plugin's declared PHP support.
+
+Updating the plugin does not patch PHP on your server. Before installing or updating, ask your hosting provider to patch the actual PHP build serving WordPress requests, plus CLI and cron runtimes. Restart or replace affected web workers and long-running processes, verify the website's PHP version/build, and test checkout and webhooks. Checking only CLI PHP does not verify the web runtime.
+
+For vendor-maintained PHP builds with backported security fixes, obtain the vendor advisory and exact package/build version confirming both fixes, and review plugin compatibility before deployment. Upstream version requirements cannot identify these backports; do not bypass them just because a package is marked up to date.
+
+ZIP and copied-directory installations skip Composer installation checks. WordPress's Requires PHP metadata and the generated Composer autoload check express only a minimum, so successful activation does not prove that every branch-specific security floor is met. Verify the web runtime with your hosting provider. Composer users can additionally run composer check-platform-reqs --lock for their CLI runtime. Full requirements and local Docker image verification: https://github.com/coinbase/coinbase-business-woocommerce#php-security-upgrade
 
 
 
